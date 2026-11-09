@@ -1,7 +1,7 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-Cette étape (E1) est seulement le squelette : un écran, rien à saisir, rien à enregistrer.
+État : squelette (E1), domaine journée/quantité (E2) et base locale chiffrée (E3). L'écran ne permet encore rien de saisir : la base n'est pas branchée à l'interface.
 
 ## Avertissement
 
@@ -41,7 +41,9 @@ Aucun `tools:node="remove"` n'est nécessaire aujourd'hui. Si une dépendance fu
 
 Le manifeste source devra alors déclarer `xmlns:tools="http://schemas.android.com/tools"`. Le test lit le manifeste fusionné : la permission doit y avoir disparu.
 
-`android:allowBackup="false"`. `dataExtractionRules` et `fullBackupContent` excluent les domaines root, file, database, sharedpref et external, pour la sauvegarde cloud et pour le transfert d'appareil. Cette étape ne stocke encore aucune donnée.
+`android:allowBackup="false"`. `dataExtractionRules` et `fullBackupContent` excluent les domaines root, file, database, sharedpref et external, pour la sauvegarde cloud et pour le transfert d'appareil. La base chiffrée (domaine database) et le fichier de clé chiffrée (dossier `no_backup`, sous root, jamais sauvegardé par Android) sont donc exclus ; `EmplacementsSauvegardeTest` le vérifie.
+
+SQLCipher et Room n'ajoutent aucune permission (manifeste fusionné vérifié) : aucun `tools:node="remove"` n'a été nécessaire en E3.
 
 ## Domaine (E2)
 
@@ -73,15 +75,82 @@ Chaque instant appartient ainsi à une seule journée ; un test le vérifie quar
 
 **Prises.** L'horodatage réel n'est jamais modifié. Une prise peut être réattribuée manuellement à une autre journée, puis rétablie. Les totaux du jour additionnent les prises confirmées par médicament et par unité ; les prises annulées et les unités différentes ne sont jamais mélangées. Aucun total n'est comparé à quoi que ce soit.
 
+## Base chiffrée (E3)
+
+**Architecture.**
+
+| Paquet | Rôle |
+|---|---|
+| `security/` | `DbKeyManager` (phrase de passe de la base), `ChiffreurCle` (interface), `KeystoreChiffreur` (Android Keystore). |
+| `data/` | Room : entités `medicament`, `prise`, `alias` ; `Convertisseurs` ; DAO ; `DoseJusteDatabase` (version 1) ; `BaseChiffree` (fabrique SQLCipher) ; `PrisesRepository` (opérations en types du domaine). |
+
+Room 2.8.5 (compilateur via KSP 2.3.13, qui s'applique avec le Kotlin intégré d'AGP 9 sans plugin `kotlin-android`) et SQLCipher pour Android 4.20.0 (`net.zetetic:sqlcipher-android`, ouvert par `SupportOpenHelperFactory`). androidx.sqlite est déclaré en 2.7.1 : SQLCipher 4.20.0 exige au moins 2.7.0, Room 2.8.5 accepte cette version.
+
+**Où est la clé.**
+1. Au premier lancement (ni fichier de clé ni base), `DbKeyManager` tire 32 octets aléatoires (`SecureRandom`) : c'est la phrase de passe SQLCipher.
+2. Elle est chiffrée en AES-256-GCM par une clé de l'Android Keystore (alias `dosejuste_db_kek_v1`, non exportable, StrongBox si disponible, sinon Keystore matériel standard, sans authentification de la personne en phase 1).
+3. Seuls l'IV et le texte chiffré sont écrits dans `no_backup/dosejuste_db_key.bin` (dossier privé de l'appli), par fichier temporaire puis renommage atomique. La phrase n'est jamais écrite en clair, ni en SharedPreferences, ni dans un journal.
+4. Aux lancements suivants, le fichier est relu et déchiffré par le Keystore. Les copies intermédiaires sont mises à zéro ; SQLCipher garde la phrase en mémoire tant que la base est ouverte.
+
+**Ce qui est chiffré.** Tout le fichier `databases/dosejuste.db` et ses journaux (pages, index, en-tête) : médicaments, prises, alias. Sans la phrase, le fichier ne commence même pas par l'en-tête « SQLite format 3 » (test instrumenté).
+
+**Cas d'erreur : jamais d'écrasement.** Si le fichier de clé existe mais que la clé Keystore a disparu, si le Keystore refuse de le déchiffrer (clé invalidée, fichier altéré), si le fichier est tronqué, ou si la base existe sans fichier de clé, `DbKeyManager` lève une `DonneesIllisiblesException` (une sous-classe par cas). Rien n'est régénéré, effacé ni remplacé ; l'interface (étape ultérieure) affichera « données illisibles ». Seul le cas « ni fichier de clé ni base » crée une nouvelle clé.
+
+**Perte de données (attendu en phase 1, aucune sauvegarde).**
+
+| Événement | Effet |
+|---|---|
+| Désinstallation | Base, fichier de clé et clé Keystore supprimés : données perdues. |
+| Réglages, Stockage, Effacer les données | Même effet : l'appli repart vide. |
+| Réinitialisation du téléphone | Données perdues. |
+| Changement ou retrait du code de verrouillage | Sans effet en phase 1 : la clé n'exige pas d'authentification, elle n'est pas invalidée. |
+| Nouveau téléphone, sauvegarde Google | Rien n'est transféré ni sauvegardé (règles d'exclusion, `allowBackup="false"`). |
+| Perte de la seule clé Keystore ou du seul fichier de clé | Base conservée mais illisible ; erreur explicite, aucune réparation possible. |
+
+Il n'existe ni export ni copie de secours en phase 1 : ne pas compter sur l'appli comme seule trace d'un traitement.
+
+**Schéma.** Tables `medicament` (libellé unique, non vide), `prise` (clé étrangère vers `medicament`, `ON DELETE RESTRICT` ; quantité en centièmes ; unité et statut stockés par nom d'énumération ; `horodatage_utc_ms` = instant réel en millisecondes UTC ; `journee_forcee` ISO `yyyy-MM-dd` ou NULL ; `cree_le`, `maj_le`), `alias` (vide en phase 1). Index sur l'horodatage, le médicament et la journée forcée. Room ne génère pas de CHECK : des déclencheurs SQL refusent quantité nulle ou négative, unité ou statut inconnus, journée forcée mal formée, libellé vide. À la lecture, une valeur inconnue lève `ValeurStockeeInvalideException`. Une prise n'est jamais supprimée : l'annulation passe son statut à `ANNULEE`.
+
+**Pas de table « journée ».** La journée se recalcule depuis l'horodatage réel et l'heure pivot (E2). La stocker figerait le pivot de la saisie : un changement de pivot laisserait des journées fausses. Seule la réattribution manuelle est enregistrée (`journee_forcee`).
+
+**Requête par journée.** `PriseDao.deLaJournee(debut, fin, journee)`, avec `[debut, fin)` = `JourneeCalculator.bornes(journee)`, renvoie les prises non réattribuées de l'intervalle et celles réattribuées à cette journée (même si leur horodatage est loin). Le repository refiltre avec `prisesDuJour` du domaine, qui fait foi. `PriseDao.entre(debut, fin)` reste disponible pour un intervalle brut.
+
+**Migrations.** `DoseJusteDatabase` est en version 1, schéma exporté dans `app/schemas/` (versionné, ajouté aux assets des tests instrumentés). Migration destructive interdite : toute évolution ajoute une `Migration` à `DoseJusteDatabase.MIGRATIONS` (vide aujourd'hui) et un test `MigrationTestHelper`. Les déclencheurs sont recréés à chaque ouverture (`IF NOT EXISTS`) ; une migration qui change leur définition doit d'abord les supprimer.
+
+**Tests.**
+- JVM (`./gradlew test`) : converters, mapping entité ↔ domaine, états de `DbKeyManager` avec un faux chiffreur, DAO et repository avec Robolectric sur une base Room en mémoire **non chiffrée** (la bibliothèque native SQLCipher ne tourne pas sur la JVM), emplacements et règles de sauvegarde, garde-fous de vocabulaire et de journaux sur `data/` et `security/`. Robolectric tourne en API 34 (les images 35 et plus exigent un JDK 21).
+- Instrumentés (`app/src/androidTest`) : base SQLCipher réelle (en-tête chiffré, réouverture, mauvaise phrase refusée), `DbKeyManager` avec le vrai Keystore, création et validation de la version 1 depuis le schéma exporté. Ils utilisent leurs propres alias Keystore et fichiers, jamais ceux de l'appli.
+
+Lancer les tests instrumentés sur le téléphone (débogage USB activé, une seule machine branchée) :
+
+```bash
+./gradlew connectedDebugAndroidTest
+```
+
+**Attention :** cette tâche installe l'APK debug par-dessus l'appli debug existante et la **désinstalle à la fin**, ce qui efface sa base. Ne pas la lancer sur un téléphone où l'appli debug contient des données à garder.
+
+## Licences tierces
+
+| Composant | Licence | Livré dans l'APK |
+|---|---|---|
+| AndroidX (Room, SQLite, Activity, Compose, Test) | Apache 2.0 | oui (Test : non) |
+| Kotlin, kotlinx.coroutines | Apache 2.0 | oui |
+| SQLCipher for Android Community Edition (Zetetic LLC) | BSD-style (Zetetic) ; inclut SQLite (domaine public) et une bibliothèque cryptographique dont la notice est à reprendre | oui |
+| KSP | Apache 2.0 | non (compilation) |
+| Robolectric | MIT | non (tests JVM) |
+| JUnit 4 | EPL 1.0 | non (tests) |
+
+La notice de copyright et la licence de SQLCipher doivent être affichées dans l'écran Licences (E5). À cette étape, relire la notice livrée avec l'AAR 4.20.0 et y reprendre les composants qu'elle cite.
+
 ## Compiler
 
 JDK 17 ou 21, et un Android SDK avec la plateforme `android-37.0` (ou les licences acceptées, pour que le plugin Gradle la télécharge).
 
 ```bash
-./gradlew assembleDebug lint test
+./gradlew assembleDebug assembleDebugAndroidTest lint test
 ```
 
-L'APK debug est `app/build/outputs/apk/debug/app-debug.apk`. La CI GitHub Actions lance la même commande sur les pull requests, sans secret, et publie cet APK comme artefact `dose-juste-debug-apk` (conservé 14 jours). Ce n'est pas un APK release signé.
+`assembleDebugAndroidTest` compile les tests instrumentés sans téléphone. L'APK debug est `app/build/outputs/apk/debug/app-debug.apk`. La CI GitHub Actions lance la même commande sur les pull requests, sans secret, et publie cet APK comme artefact `dose-juste-debug-apk` (conservé 14 jours). Ce n'est pas un APK release signé.
 
 ## Contrôle sur un Pixel 7 Pro
 
@@ -89,4 +158,4 @@ L'APK debug est `app/build/outputs/apk/debug/app-debug.apk`. La CI GitHub Action
 2. Réglages, Applications, Dose Juste, Autorisations : aucune autorisation n'est demandée ni accordée.
 3. Mode avion, rouvrir l'appli : le même écran, sans erreur réseau.
 
-Il n'y a pas encore de saisie. Ne pas y entrer un vrai traitement.
+Il n'y a pas encore de saisie. Ne pas y entrer un vrai traitement. La base chiffrée n'est pas encore ouverte par l'écran : elle n'est créée que par les tests instrumentés (fichiers de test, supprimés à la fin).

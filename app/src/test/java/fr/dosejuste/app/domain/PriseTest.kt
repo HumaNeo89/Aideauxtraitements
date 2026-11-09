@@ -109,6 +109,23 @@ class PriseTest {
     }
 
     @Test
+    fun medicamentsDistinctsNonAdditionnes() {
+        // Deux libellés fictifs : « Testoline » et sa variante « Testoline B ».
+        val prises = listOf(
+            prise("1", "2026-11-10T08:00", 100),
+            prise("2", "2026-11-10T09:00", 25, medicament = "Testoline B"),
+            prise("3", "2026-11-10T10:00", 40),
+        )
+        assertEquals(
+            mapOf(
+                CleTotal("Testoline", Unite.MG) to Quantite(140),
+                CleTotal("Testoline B", Unite.MG) to Quantite(25),
+            ),
+            totauxDuJour(prises, aujourdhui, calc),
+        )
+    }
+
+    @Test
     fun libelleVideRefuse() {
         assertThrows(IllegalArgumentException::class.java) { prise("1", "2026-11-10T08:00", 100, medicament = " ") }
     }
