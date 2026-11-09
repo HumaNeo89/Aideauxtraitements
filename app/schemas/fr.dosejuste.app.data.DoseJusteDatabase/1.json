@@ -1,0 +1,215 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "40dad3a6e0a211a7bd506369cff8806b",
+    "entities": [
+      {
+        "tableName": "medicament",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `libelle` TEXT NOT NULL, `cree_le` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "libelle",
+            "columnName": "libelle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creeLe",
+            "columnName": "cree_le",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_medicament_libelle",
+            "unique": true,
+            "columnNames": [
+              "libelle"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_medicament_libelle` ON `${TABLE_NAME}` (`libelle`)"
+          }
+        ]
+      },
+      {
+        "tableName": "prise",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `medicament_id` INTEGER NOT NULL, `quantite_centiemes` INTEGER NOT NULL, `unite` TEXT NOT NULL, `horodatage_utc_ms` INTEGER NOT NULL, `statut` TEXT NOT NULL, `journee_forcee` TEXT, `cree_le` INTEGER NOT NULL, `maj_le` INTEGER NOT NULL, FOREIGN KEY(`medicament_id`) REFERENCES `medicament`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicamentId",
+            "columnName": "medicament_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantiteCentiemes",
+            "columnName": "quantite_centiemes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unite",
+            "columnName": "unite",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horodatage",
+            "columnName": "horodatage_utc_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statut",
+            "columnName": "statut",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "journeeForcee",
+            "columnName": "journee_forcee",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "creeLe",
+            "columnName": "cree_le",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "majLe",
+            "columnName": "maj_le",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_prise_horodatage_utc_ms",
+            "unique": false,
+            "columnNames": [
+              "horodatage_utc_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_prise_horodatage_utc_ms` ON `${TABLE_NAME}` (`horodatage_utc_ms`)"
+          },
+          {
+            "name": "index_prise_medicament_id",
+            "unique": false,
+            "columnNames": [
+              "medicament_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_prise_medicament_id` ON `${TABLE_NAME}` (`medicament_id`)"
+          },
+          {
+            "name": "index_prise_journee_forcee",
+            "unique": false,
+            "columnNames": [
+              "journee_forcee"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_prise_journee_forcee` ON `${TABLE_NAME}` (`journee_forcee`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "medicament",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "medicament_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "alias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `medicament_id` INTEGER NOT NULL, `texte` TEXT NOT NULL, FOREIGN KEY(`medicament_id`) REFERENCES `medicament`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicamentId",
+            "columnName": "medicament_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "texte",
+            "columnName": "texte",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_alias_medicament_id",
+            "unique": false,
+            "columnNames": [
+              "medicament_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_alias_medicament_id` ON `${TABLE_NAME}` (`medicament_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "medicament",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "medicament_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40dad3a6e0a211a7bd506369cff8806b')"
+    ]
+  }
+}

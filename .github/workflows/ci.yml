@@ -67,8 +67,8 @@ jobs:
           echo "ANDROID_HOME=${{ steps.sdk.outputs.path }}" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=${{ steps.sdk.outputs.path }}" >> "$GITHUB_ENV"
 
-      - name: Compiler, lint, tests unitaires
-        run: ./gradlew assembleDebug lint test --stacktrace
+      - name: Compiler (appli et tests instrumentés), lint, tests unitaires
+        run: ./gradlew assembleDebug assembleDebugAndroidTest lint test --stacktrace
 
       - name: Publier l'APK debug
         uses: actions/upload-artifact@v7
