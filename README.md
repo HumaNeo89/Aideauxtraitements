@@ -1,7 +1,7 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-État : squelette (E1), domaine journée/quantité (E2) et base locale chiffrée (E3). L'écran ne permet encore rien de saisir : la base n'est pas branchée à l'interface.
+État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) et saisie d'une prise avec annulation (E4). Pas encore de totaux ni d'historique (E5).
 
 ## Avertissement
 
@@ -129,12 +129,32 @@ Lancer les tests instrumentés sur le téléphone (débogage USB activé, une se
 
 **Attention :** cette tâche installe l'APK debug par-dessus l'appli debug existante et la **désinstalle à la fin**, ce qui efface sa base. Ne pas la lancer sur un téléphone où l'appli debug contient des données à garder.
 
+## Saisie (E4)
+
+Code dans `app/src/main/java/fr/dosejuste/app/ui/` : une seule activité, Compose Material 3, pas de bibliothèque de navigation (un état d'écran suffit), pas d'injection de dépendances.
+
+**Parcours.** Écran « Aujourd'hui (saisie) » : nom de l'appli et phrase d'avertissement toujours visibles, bouton « Nouvelle prise », liste des prises de la journée (« 14:05 — 0,25 mg de Testoline », mention « annulée » en rouge si annulée). Deux puces permettent d'afficher la journée en cours (pivot 05:00, `JourneeCalculator`) ou la précédente : une prise saisie à 01:30 « aujourd'hui » compte pour la veille et n'apparaît que dans la précédente.
+
+Formulaire : médicament (liste personnelle, vide au départ ; un libellé s'ajoute par un champ texte, refus du vide et des doublons sans tenir compte de la casse), quantité (clavier décimal, `Quantite.analyser`, un message français par motif de refus, neutre : « Saisie trop grande », jamais de conseil), unité (liste fermée : mg, comprimé, goutte, ml), jour « Aujourd'hui » ou « Hier » (jour civil) et heure (TimePicker 24 h, par défaut maintenant à la minute). Une heure après maintenant est refusée. « Relire » ouvre un dialogue : « 2 mg de Testoline à 14:05 » (« hier à 01:30 » si hier). **Rien n'est écrit avant « Enregistrer »**, « Modifier » revient au formulaire avec les valeurs saisies.
+
+**Règle des 10 secondes.** Après « Enregistrer », la prise est en base (CONFIRMEE) et un Snackbar « Prise enregistrée : … » propose « Annuler » pendant 10 s exactement. Le délai est piloté par le ViewModel (`delay(10 s)`), pas par `SnackbarDuration` : le Snackbar est affiché sans durée propre tant que l'état `annulationRapide` existe. À 9,9 s, « Annuler » passe la prise en ANNULEE (la ligne reste, exclue des totaux). À 10,0 s l'action disparaît et plus rien ne l'exécute. Un nouvel enregistrement remplace l'annulation rapide de la précédente.
+
+**Annulation depuis la liste.** Toute prise confirmée de la liste a « Annuler cette prise », avec dialogue de confirmation. Elle fonctionne sans limite de temps.
+
+**Écran « Données illisibles ».** La base est ouverte hors du fil principal (`Dispatchers.IO`), écran « Chargement » pendant ce temps. Si `BaseChiffree.ouvrir` lève `DonneesIllisiblesException`, l'écran explique sans jargon que la clé de chiffrement est perdue ou invalide, que l'appli ne peut pas lire les données et ne les efface pas d'elle-même. Seul bouton : « Fermer ». Aucun effacement automatique, aucun bouton qui efface (une réinitialisation explicite sera décidée plus tard). Toute autre erreur d'ouverture donne un écran générique, sans détail technique ; rien n'est journalisé.
+
+**Volontairement absent** (étape E5) : totaux du jour, historique complet, avertissement de premier lancement, écran Licences. Pas d'export, pas d'INTERNET.
+
+**Tests.** JVM : `SaisieViewModelTest` (faux journal en mémoire, horloge fixe 10/11/2026 Europe/Paris, temps virtuel), `OuvertureViewModelTest`, `SaisieIntegrationTest` (Robolectric, vraie base Room en mémoire non chiffrée : annulation persistée, prise annulée exclue de `totauxDuJour`), `UiGardeFousTest` (vocabulaire interdit dans `ui/` et `strings.xml` ; « trop » n'est toléré que dans « Saisie trop grande », exception écrite dans le test). Instrumentés : `SaisieUiTest` (Compose, faux journal : jamais la vraie base ni l'alias Keystore de production).
+
+Dépendances ajoutées : `androidx.lifecycle` 2.9.4 (viewmodel-compose, runtime-compose ; version déjà résolue par Compose/Activity), `kotlinx-coroutines-test` 1.9.0 (tests, aligné sur coroutines-core), `ui-test-junit4` et `ui-test-manifest` (via le BOM Compose ; manifeste de test ajouté en debug seulement, `MergedManifestPermissionsTest` reste vert).
+
 ## Licences tierces
 
 | Composant | Licence | Livré dans l'APK |
 |---|---|---|
-| AndroidX (Room, SQLite, Activity, Compose, Test) | Apache 2.0 | oui (Test : non) |
-| Kotlin, kotlinx.coroutines | Apache 2.0 | oui |
+| AndroidX (Room, SQLite, Activity, Lifecycle, Compose, Test) | Apache 2.0 | oui (Test : non ; `ui-test-manifest` : debug seulement) |
+| Kotlin, kotlinx.coroutines (dont coroutines-test, tests seulement) | Apache 2.0 | oui (coroutines-test : non) |
 | SQLCipher for Android Community Edition (Zetetic LLC) | BSD-style (Zetetic) ; inclut SQLite (domaine public) et une bibliothèque cryptographique dont la notice est à reprendre | oui |
 | KSP | Apache 2.0 | non (compilation) |
 | Robolectric | MIT | non (tests JVM) |
@@ -154,8 +174,9 @@ JDK 17 ou 21, et un Android SDK avec la plateforme `android-37.0` (ou les licenc
 
 ## Contrôle sur un Pixel 7 Pro
 
-1. Installer l'APK debug. L'écran affiche « Dose Juste » et la phrase qui refuse tout conseil médical ou de dose. Aucune autorisation n'est demandée.
+1. Installer l'APK debug. L'écran affiche « Dose Juste », la phrase qui refuse tout conseil médical ou de dose et « Nouvelle prise ». Aucune autorisation n'est demandée.
 2. Réglages, Applications, Dose Juste, Autorisations : aucune autorisation n'est demandée ni accordée.
 3. Mode avion, rouvrir l'appli : le même écran, sans erreur réseau.
+4. Ajouter un médicament fictif (« Testoline »), saisir 2 mg, « Relire », « Enregistrer », puis « Annuler » dans les 10 s : la prise apparaît « annulée ».
 
-Il n'y a pas encore de saisie. Ne pas y entrer un vrai traitement. La base chiffrée n'est pas encore ouverte par l'écran : elle n'est créée que par les tests instrumentés (fichiers de test, supprimés à la fin).
+La base chiffrée de production est désormais ouverte et créée au premier lancement : ne pas y entrer un vrai traitement avant la fin de la phase de test. Attention, `connectedDebugAndroidTest` désinstalle l'appli debug et efface cette base.

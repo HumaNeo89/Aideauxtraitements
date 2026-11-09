@@ -4,57 +4,43 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import fr.dosejuste.app.data.BaseChiffree
+import fr.dosejuste.app.data.PrisesRepository
+import fr.dosejuste.app.ui.DoseJusteApp
+import fr.dosejuste.app.ui.JournalRoom
+import fr.dosejuste.app.ui.OuvertureViewModel
+import java.time.Clock
 
 class MainActivity : ComponentActivity() {
+
+    // L'ouverture de la base se fait dans le ViewModel, sur Dispatchers.IO (jamais sur le fil principal).
+    private val ouverture: OuvertureViewModel by viewModels {
+        val contexte = applicationContext
+        viewModelFactory {
+            initializer {
+                OuvertureViewModel(ouvrir = {
+                    val base = BaseChiffree.ouvrir(contexte)
+                    JournalRoom(PrisesRepository(base, Clock.systemUTC()), base)
+                })
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             DoseJusteTheme {
-                DoseJusteScreen()
+                DoseJusteApp(ouverture = ouverture, onFermer = ::finish)
             }
-        }
-    }
-}
-
-@Composable
-fun DoseJusteScreen() {
-    Scaffold { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = stringResource(R.string.disclaimer),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -65,12 +51,4 @@ fun DoseJusteTheme(content: @Composable () -> Unit) {
         colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme(),
         content = content,
     )
-}
-
-@Preview(showBackground = true, name = "Dose Juste")
-@Composable
-private fun DoseJusteScreenPreview() {
-    DoseJusteTheme {
-        DoseJusteScreen()
-    }
 }
