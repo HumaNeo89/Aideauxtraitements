@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dose Juste</string>
+    <string name="disclaimer">Journal personnel. Cette application ne donne aucun conseil médical ni de dose.</string>
+</resources>
