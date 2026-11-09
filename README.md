@@ -1,7 +1,7 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-Cette étape (E1) est seulement le squelette : un écran, rien à saisir, rien à enregistrer.
+État : squelette (E1) et domaine journée/quantité (E2), testé sur la JVM. Il n'y a encore rien à saisir ni à enregistrer.
 
 ## Avertissement
 
