@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import fr.dosejuste.app.DoseJusteTheme
@@ -58,7 +60,11 @@ class SaisieUiTest {
         rule.onNodeWithTag(Tags.CHAMP_LIBELLE).performTextInput("Testoline")
         rule.onNodeWithTag(Tags.AJOUTER_LIBELLE).performClick()
         rule.onNodeWithTag(Tags.CHAMP_QUANTITE).performTextInput("2")
-        rule.onNodeWithTag(Tags.RELIRE).performClick()
+        // Ferme le clavier (il masquait la boîte de relecture), puis amène « Relire » à l'écran.
+        Espresso.closeSoftKeyboard()
+        rule.waitForIdle()
+        rule.onNodeWithTag(Tags.RELIRE).performScrollTo().performClick()
+        rule.waitForIdle()
 
         // Relecture : rien n'est encore en base.
         rule.onNodeWithText("2 mg de Testoline à 14:05").assertIsDisplayed()
