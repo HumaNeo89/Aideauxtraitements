@@ -43,6 +43,36 @@ Le manifeste source devra alors déclarer `xmlns:tools="http://schemas.android.c
 
 `android:allowBackup="false"`. `dataExtractionRules` et `fullBackupContent` excluent les domaines root, file, database, sharedpref et external, pour la sauvegarde cloud et pour le transfert d'appareil. Cette étape ne stocke encore aucune donnée.
 
+## Domaine (E2)
+
+Code Kotlin pur dans `app/src/main/java/fr/dosejuste/app/domain/` (aucune dépendance Android, `java.time` seulement), testé sur la JVM. Pas encore d'écran ni de stockage.
+
+**Quantité.** Valeur exacte en centièmes d'unité dans un `Long` (100 = 1), jamais en nombre à virgule flottante, toujours strictement positive. Les additions sont exactes et refusent le débordement. Affichage français sans zéro inutile : « 0,25 », « 0,4 », « 1 », « 10,5 », sans séparateur de milliers.
+
+**Unités** (liste fermée) : mg, comprimé, goutte, ml. « comprimé » et « goutte » prennent un « s » à partir de 2 (« 0,5 comprimé », « 1 comprimé », « 2 comprimés ») ; mg et ml sont invariables.
+
+**Saisie.** Acceptée : chiffres ASCII, virgule ou point décimal suivi d'1 ou 2 chiffres, espaces autour ignorés (`0,25`, `0.4`, `1`, ` 1,5 `, `10,50`, `0,50`). Refusée :
+
+| Saisie | Motif |
+|---|---|
+| vide ou espaces | `VIDE` |
+| `,5`, `5,`, `+1`, `1e3`, `1 000`, `1.000,5`, lettres, chiffres non ASCII | `FORMAT` |
+| `0,125` (plus de 2 décimales) | `TROP_DE_DECIMALES` |
+| `0`, `0,00`, `-1` | `NUL_OU_NEGATIF` |
+| au-delà de 100 000 | `TROP_GRAND` |
+
+Le plafond de 100 000 est une simple garde contre les fautes de frappe, pas une valeur médicale.
+
+**Journée.** Fuseau par défaut `Europe/Paris`, heure pivot réglable à la minute (défaut 05:00). Une prise dont l'heure locale est avant le pivot compte pour la veille : avec 05:00, une prise à 00:59 ou 04:59 compte pour la veille, une prise à 05:00 pour le jour même. Avec 23:00, la journée D va du jour D à 23:00 au jour D+1 à 22:59:59.
+
+Une journée dure 24 h, 23 h ou 25 h autour des changements d'heure. Elle commence au premier instant où l'heure locale atteint le pivot :
+- pivot dans l'heure qui n'existe pas (ex. 02:30 le 29/03/2026) : la journée commence au saut, à 03:00 ;
+- pivot dans l'heure vécue deux fois (ex. 02:30 le 25/10/2026) : la journée commence à la première occurrence ; la seconde ne la renvoie pas à la veille.
+
+Chaque instant appartient ainsi à une seule journée ; un test le vérifie quart d'heure par quart d'heure de mars à fin octobre 2026, pour plusieurs pivots.
+
+**Prises.** L'horodatage réel n'est jamais modifié. Une prise peut être réattribuée manuellement à une autre journée, puis rétablie. Les totaux du jour additionnent les prises confirmées par médicament et par unité ; les prises annulées et les unités différentes ne sont jamais mélangées. Aucun total n'est comparé à quoi que ce soit.
+
 ## Compiler
 
 JDK 17 ou 21, et un Android SDK avec la plateforme `android-37.0` (ou les licences acceptées, pour que le plugin Gradle la télécharge).
