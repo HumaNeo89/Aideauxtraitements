@@ -24,6 +24,8 @@ coroutines = "1.9.0"
 androidxTestCore = "1.7.0"
 androidxTestExtJunit = "1.3.0"
 androidxTestRunner = "1.7.0"
+# espresso-core 3.5.0 (tiré par ui-test-junit4) appelle InputManager.getInstance, retiré en API 37.
+espressoCore = "3.7.0"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -49,6 +51,7 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

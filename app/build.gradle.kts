@@ -91,6 +91,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.room.testing)
+    // Espresso 3.7.0 : le 3.5.0 transitif échoue sur Android 17 (API 37), tests instrumentés seulement.
+    androidTestImplementation(libs.androidx.test.espresso.core)
 }
 
 // Le test unitaire lit le manifeste déjà fusionné (dépendances comprises).
