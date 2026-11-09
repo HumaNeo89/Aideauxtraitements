@@ -170,11 +170,27 @@ class SaisieViewModelTest {
         vm.relire()
         vm.enregistrer()
         runCurrent()
-        // Pas dans la journée courante (10/11) ; retrouvée dans la journée précédente (09/11).
-        assertTrue(vm.etat.value.prises.isEmpty())
-        vm.choisirJourneeAffichee(JourneeAffichee.PRECEDENTE)
-        runCurrent()
-        assertEquals(listOf("01:30 — 1 mg de Testoline"), vm.etat.value.prises.map { it.texte })
+        // Pivot 05:00 : 01:30 le 10/11 compte pour la journée du 09/11 (l'affichage par journée
+        // est vérifié dans JourneeViewModelTest).
+        assertEquals(aParis("2026-11-10T01:30"), journal.prises.value.single().horodatage)
+        assertEquals(java.time.LocalDate.parse("2026-11-09"), calc.journeeDe(journal.prises.value.single().horodatage))
+    }
+
+    @Test
+    fun laCasseDuLibelleEstConserveeDeLaSaisieALaRelecture() = test {
+        val vm = vm()
+        for (libelle in listOf("Testoline", "testoline B", "TESTOLINE C", "Exemple")) {
+            vm.ouvrirFormulaire()
+            vm.saisirLibelle(libelle)
+            vm.ajouterMedicament()
+            runCurrent()
+            vm.saisirQuantite("2")
+            vm.relire()
+            runCurrent()
+            assertEquals("2 mg ${if (libelle == "Exemple") "d'" else "de "}$libelle à 14:05", vm.etat.value.relecture!!.phrase)
+            assertEquals(libelle, journal.listeMedicaments.last().libelle)
+            vm.fermerFormulaire()
+        }
     }
 
     // ---- Relecture ----
@@ -261,7 +277,6 @@ class SaisieViewModelTest {
         assertEquals(StatutPrise.ANNULEE, journal.statut(id))
         assertEquals(1, journal.prises.value.size) // la ligne reste
         assertNull(vm.etat.value.annulationRapide)
-        assertTrue(vm.etat.value.prises.single().annulee)
     }
 
     @Test
@@ -284,39 +299,6 @@ class SaisieViewModelTest {
         vm.annulerRapide()
         runCurrent()
         assertEquals(StatutPrise.CONFIRMEE, journal.statut(id))
-    }
-
-    @Test
-    fun annulationDepuisLaListeApres10SecondesAvecConfirmation() = test {
-        val vm = vm()
-        val id = enregistrerUnePrise(vm)
-        advanceTimeBy(10_000)
-        runCurrent()
-        assertNull(vm.etat.value.annulationRapide)
-
-        val ligne = vm.etat.value.prises.single()
-        assertEquals("14:05 — 2 mg de Testoline", ligne.texte)
-        assertFalse(ligne.annulee)
-
-        vm.demanderAnnulation(ligne.id)
-        assertEquals(ligne, vm.etat.value.priseAAnnuler)
-        runCurrent()
-        assertEquals("rien avant confirmation", StatutPrise.CONFIRMEE, journal.statut(id))
-
-        vm.abandonnerAnnulation()
-        assertNull(vm.etat.value.priseAAnnuler)
-        vm.confirmerAnnulation() // plus de demande en cours : sans effet
-        runCurrent()
-        assertEquals(StatutPrise.CONFIRMEE, journal.statut(id))
-
-        vm.demanderAnnulation(ligne.id)
-        vm.confirmerAnnulation()
-        runCurrent()
-        assertEquals(StatutPrise.ANNULEE, journal.statut(id))
-        assertTrue(vm.etat.value.prises.single().annulee)
-
-        vm.demanderAnnulation(ligne.id) // déjà annulée : pas de nouvelle demande
-        assertNull(vm.etat.value.priseAAnnuler)
     }
 
     @Test
@@ -376,7 +358,6 @@ class SaisieViewModelTest {
     fun listeDeMedicamentsVideAuDepart() = test {
         val vm = vm()
         assertTrue(vm.etat.value.medicaments.isEmpty())
-        assertTrue(vm.etat.value.prises.isEmpty())
         assertNull(vm.etat.value.formulaire)
     }
 }

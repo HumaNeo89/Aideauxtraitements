@@ -12,6 +12,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -21,10 +24,23 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import fr.dosejuste.app.R
+import fr.dosejuste.app.prefs.Reglages
+import java.time.Clock
 
-/** Racine : chargement, erreur d'ouverture, ou écran de saisie. */
+/** Écrans de l'appli, par état (pas de bibliothèque de navigation). */
+enum class Ecran { AUJOURDHUI, HISTORIQUE, REGLAGES, A_PROPOS, LICENCES }
+
+/**
+ * Racine : chargement, erreur d'ouverture (prioritaire), avertissement de premier lancement,
+ * puis les écrans. Tant que l'avertissement n'est pas accepté, rien d'autre n'est accessible.
+ */
 @Composable
-fun DoseJusteApp(ouverture: OuvertureViewModel, onFermer: () -> Unit) {
+fun DoseJusteApp(
+    ouverture: OuvertureViewModel,
+    reglages: Reglages,
+    onFermer: () -> Unit,
+    horloge: Clock = Clock.systemUTC(),
+) {
     val etat by ouverture.etat.collectAsStateWithLifecycle()
     when (val e = etat) {
         EtatOuverture.Chargement -> EcranChargement()
@@ -39,11 +55,54 @@ fun DoseJusteApp(ouverture: OuvertureViewModel, onFermer: () -> Unit) {
             onFermer = onFermer,
         )
         is EtatOuverture.Pret -> {
-            val vm: SaisieViewModel = viewModel(
-                factory = viewModelFactory { initializer { SaisieViewModel(e.journal) } },
+            val reglagesVm: ReglagesViewModel = viewModel(
+                factory = viewModelFactory { initializer { ReglagesViewModel(reglages) } },
             )
-            EcranSaisie(vm)
+            val accepte by reglagesVm.avertissementAccepte.collectAsStateWithLifecycle()
+            if (!accepte) {
+                EcranAvertissement(onAccepter = reglagesVm::accepterAvertissement)
+            } else {
+                Ecrans(e.journal, reglages, reglagesVm, horloge)
+            }
         }
+    }
+}
+
+@Composable
+private fun Ecrans(journal: JournalPrises, reglages: Reglages, reglagesVm: ReglagesViewModel, horloge: Clock) {
+    var ecran by rememberSaveable { mutableStateOf(Ecran.AUJOURDHUI) }
+    val saisie: SaisieViewModel = viewModel(
+        key = "saisie",
+        factory = viewModelFactory { initializer { SaisieViewModel(journal, horloge) } },
+    )
+    // Deux instances : « Aujourd'hui » reste sur la journée en cours, « Historique » navigue.
+    val aujourdhui: JourneeViewModel = viewModel(
+        key = "aujourdhui",
+        factory = viewModelFactory { initializer { JourneeViewModel(journal, reglages, horloge) } },
+    )
+    when (ecran) {
+        Ecran.AUJOURDHUI -> EcranAujourdhui(
+            vm = saisie,
+            jour = aujourdhui,
+            navigation = Navigation(
+                onHistorique = { ecran = Ecran.HISTORIQUE },
+                onReglages = { ecran = Ecran.REGLAGES },
+                onAPropos = { ecran = Ecran.A_PROPOS },
+            ),
+        )
+        Ecran.HISTORIQUE -> {
+            val historique: JourneeViewModel = viewModel(
+                key = "historique",
+                factory = viewModelFactory { initializer { JourneeViewModel(journal, reglages, horloge) } },
+            )
+            EcranHistorique(historique, onRetour = { ecran = Ecran.AUJOURDHUI })
+        }
+        Ecran.REGLAGES -> EcranReglages(reglagesVm, onRetour = { ecran = Ecran.AUJOURDHUI })
+        Ecran.A_PROPOS -> EcranAPropos(
+            onLicences = { ecran = Ecran.LICENCES },
+            onRetour = { ecran = Ecran.AUJOURDHUI },
+        )
+        Ecran.LICENCES -> EcranLicences(onRetour = { ecran = Ecran.A_PROPOS })
     }
 }
 

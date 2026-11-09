@@ -3,15 +3,12 @@ package fr.dosejuste.app.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.dosejuste.app.domain.JourneeCalculator
-import fr.dosejuste.app.domain.Prise
 import fr.dosejuste.app.domain.Quantite
 import fr.dosejuste.app.domain.RaisonErreur
 import fr.dosejuste.app.domain.ResultatAnalyse
-import fr.dosejuste.app.domain.StatutPrise
 import fr.dosejuste.app.domain.Unite
 import java.time.Clock
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 import kotlin.coroutines.cancellation.CancellationException
@@ -27,9 +24,6 @@ import kotlinx.coroutines.launch
 
 /** Refus d'un libellé de médicament. */
 enum class ErreurLibelle { VIDE, DOUBLON }
-
-/** Journée dont la liste est affichée : la journée courante (pivot) ou la précédente. */
-enum class JourneeAffichee { COURANTE, PRECEDENTE }
 
 /** Champs du formulaire « Nouvelle prise » et erreurs de validation (montrées à « Relire »). */
 data class Formulaire(
@@ -54,26 +48,22 @@ data class Relecture(
     val phrase: String,
 )
 
-/** Ligne de la liste des prises de la journée. */
-data class LignePrise(val id: Long, val texte: String, val annulee: Boolean)
-
 /** Annulation rapide offerte pendant le délai (10 s) après un enregistrement. */
 data class AnnulationRapide(val priseId: Long, val phrase: String)
 
 data class SaisieUiState(
     val medicaments: List<Medicament> = emptyList(),
-    val journeeAffichee: JourneeAffichee = JourneeAffichee.COURANTE,
-    val prises: List<LignePrise> = emptyList(),
     val formulaire: Formulaire? = null,
     val relecture: Relecture? = null,
-    val priseAAnnuler: LignePrise? = null,
     val annulationRapide: AnnulationRapide? = null,
     val erreurOperation: Boolean = false,
 )
 
 /**
- * Logique de l'écran de saisie. Dépendances injectables (journal, horloge, calculateur de
- * journée, délai d'annulation) pour être testée sur la JVM avec kotlinx-coroutines-test.
+ * Logique du formulaire de saisie et de l'annulation rapide (les totaux et la liste d'une
+ * journée sont dans [JourneeViewModel]). Dépendances injectables (journal, horloge, fuseau du
+ * calculateur de journée, délai d'annulation) pour être testée sur la JVM avec
+ * kotlinx-coroutines-test.
  *
  * Délai d'annulation : [delaiAnnulation] (10 s), piloté par `delay` ; à l'échéance
  * [SaisieUiState.annulationRapide] repasse à `null` et [annulerRapide] ne fait plus rien.
@@ -91,47 +81,10 @@ class SaisieViewModel(
     val etat: StateFlow<SaisieUiState> = _etat.asStateFlow()
 
     private var minuteur: Job? = null
-    private var observation: Job? = null
     private var enregistrementEnCours = false
 
     init {
         viewModelScope.launch { rafraichirMedicaments() }
-        observerListe(JourneeAffichee.COURANTE)
-    }
-
-    // ---- Liste des prises ----
-
-    fun choisirJourneeAffichee(choix: JourneeAffichee) {
-        if (choix == _etat.value.journeeAffichee) return
-        observerListe(choix)
-    }
-
-    private fun observerListe(choix: JourneeAffichee) {
-        observation?.cancel()
-        _etat.update { it.copy(journeeAffichee = choix) }
-        val aujourdhui = calc.journeeDe(horloge.instant())
-        val journee = if (choix == JourneeAffichee.COURANTE) aujourdhui else aujourdhui.minusDays(1)
-        observation = viewModelScope.launch {
-            try {
-                journal.observerPrisesDuJour(journee, calc).collect { prises ->
-                    _etat.update { it.copy(prises = prises.mapNotNull(::versLigne)) }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _etat.update { it.copy(erreurOperation = true) }
-            }
-        }
-    }
-
-    private fun versLigne(prise: Prise): LignePrise? {
-        val id = prise.id.toLongOrNull() ?: return null
-        val heure = prise.horodatage.atZone(calc.zone).toLocalTime()
-        return LignePrise(
-            id = id,
-            texte = PhrasePrise.ligne(prise.quantite, prise.unite, prise.medicament, heure),
-            annulee = prise.statut == StatutPrise.ANNULEE,
-        )
     }
 
     // ---- Formulaire ----
@@ -302,22 +255,6 @@ class SaisieViewModel(
         _etat.update { it.copy(annulationRapide = null) }
     }
 
-    /** Depuis la liste : demande de confirmation (prises confirmées seulement). */
-    fun demanderAnnulation(id: Long) {
-        val ligne = _etat.value.prises.firstOrNull { it.id == id && !it.annulee } ?: return
-        _etat.update { it.copy(priseAAnnuler = ligne) }
-    }
-
-    fun abandonnerAnnulation() {
-        _etat.update { it.copy(priseAAnnuler = null) }
-    }
-
-    fun confirmerAnnulation() {
-        val ligne = _etat.value.priseAAnnuler ?: return
-        _etat.update { it.copy(priseAAnnuler = null) }
-        viewModelScope.launch { annuler(ligne.id) }
-    }
-
     private suspend fun annuler(id: Long) {
         try {
             journal.annulerPrise(id)
@@ -330,11 +267,5 @@ class SaisieViewModel(
 
     fun acquitterErreur() {
         _etat.update { it.copy(erreurOperation = false) }
-    }
-
-    /** Journée affichée, pour les tests et l'interface. */
-    fun journeeAffichee(): LocalDate {
-        val aujourdhui = calc.journeeDe(horloge.instant())
-        return if (_etat.value.journeeAffichee == JourneeAffichee.COURANTE) aujourdhui else aujourdhui.minusDays(1)
     }
 }

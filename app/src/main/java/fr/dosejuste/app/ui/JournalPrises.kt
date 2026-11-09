@@ -29,6 +29,9 @@ interface JournalPrises {
     /** Passe la prise en ANNULEE (la ligne reste). Faux si rien n'a changé. */
     suspend fun annulerPrise(id: Long): Boolean
 
+    /** Réattribue la prise à [journee] ; `null` rétablit la journée calculée. Faux si rien n'a changé. */
+    suspend fun reattribuer(id: Long, journee: LocalDate?): Boolean
+
     fun observerPrisesDuJour(journee: LocalDate, calc: JourneeCalculator): Flow<List<Prise>>
 }
 
@@ -54,6 +57,8 @@ class JournalRoom(
     ): Long = depot.enregistrerPrise(medicamentId, quantite, unite, horodatage)
 
     override suspend fun annulerPrise(id: Long): Boolean = depot.annulerPrise(id)
+
+    override suspend fun reattribuer(id: Long, journee: LocalDate?): Boolean = depot.reattribuer(id, journee)
 
     override fun observerPrisesDuJour(journee: LocalDate, calc: JourneeCalculator): Flow<List<Prise>> =
         depot.observerPrisesDuJour(journee, calc)

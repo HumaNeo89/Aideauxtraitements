@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import fr.dosejuste.app.data.BaseChiffree
 import fr.dosejuste.app.data.PrisesRepository
+import fr.dosejuste.app.prefs.ReglagesPrefs
 import fr.dosejuste.app.ui.DoseJusteApp
 import fr.dosejuste.app.ui.JournalRoom
 import fr.dosejuste.app.ui.OuvertureViewModel
@@ -37,9 +38,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val reglages = ReglagesPrefs(applicationContext)
         setContent {
             DoseJusteTheme {
-                DoseJusteApp(ouverture = ouverture, onFermer = ::finish)
+                DoseJusteApp(ouverture = ouverture, reglages = reglages, onFermer = ::finish)
             }
         }
     }

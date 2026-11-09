@@ -1,7 +1,7 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) et saisie d'une prise avec annulation (E4). Pas encore de totaux ni d'historique (E5).
+État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) saisie d'une prise avec annulation (E4) et écrans Aujourd'hui, Historique, Réglages, Avertissement, Licences (E5).
 
 ## Avertissement
 
@@ -133,7 +133,7 @@ Lancer les tests instrumentés sur le téléphone (débogage USB activé, une se
 
 Code dans `app/src/main/java/fr/dosejuste/app/ui/` : une seule activité, Compose Material 3, pas de bibliothèque de navigation (un état d'écran suffit), pas d'injection de dépendances.
 
-**Parcours.** Écran « Aujourd'hui (saisie) » : nom de l'appli et phrase d'avertissement toujours visibles, bouton « Nouvelle prise », liste des prises de la journée (« 14:05 — 0,25 mg de Testoline », mention « annulée » en rouge si annulée). Deux puces permettent d'afficher la journée en cours (pivot 05:00, `JourneeCalculator`) ou la précédente : une prise saisie à 01:30 « aujourd'hui » compte pour la veille et n'apparaît que dans la précédente.
+**Parcours.** Écran « Aujourd'hui » : nom de l'appli et phrase d'avertissement toujours visibles, bouton « Nouvelle prise », liste des prises de la journée (« 14:05 — 0,25 mg de Testoline », mention « annulée » en rouge si annulée). Depuis E5, totaux et liste viennent de `JourneeViewModel` (voir « Écrans (E5) ») ; `SaisieViewModel` ne garde que le formulaire et l'annulation rapide. Une prise saisie à 01:30 « aujourd'hui » compte pour la veille avec le pivot 5 h.
 
 Formulaire : médicament (liste personnelle, vide au départ ; un libellé s'ajoute par un champ texte, refus du vide et des doublons sans tenir compte de la casse), quantité (clavier décimal, `Quantite.analyser`, un message français par motif de refus, neutre : « Saisie trop grande », jamais de conseil), unité (liste fermée : mg, comprimé, goutte, ml), jour « Aujourd'hui » ou « Hier » (jour civil) et heure (TimePicker 24 h, par défaut maintenant à la minute). Une heure après maintenant est refusée. « Relire » ouvre un dialogue : « 2 mg de Testoline à 14:05 » (« hier à 01:30 » si hier). **Rien n'est écrit avant « Enregistrer »**, « Modifier » revient au formulaire avec les valeurs saisies.
 
@@ -143,11 +143,32 @@ Formulaire : médicament (liste personnelle, vide au départ ; un libellé s'ajo
 
 **Écran « Données illisibles ».** La base est ouverte hors du fil principal (`Dispatchers.IO`), écran « Chargement » pendant ce temps. Si `BaseChiffree.ouvrir` lève `DonneesIllisiblesException`, l'écran explique sans jargon que la clé de chiffrement est perdue ou invalide, que l'appli ne peut pas lire les données et ne les efface pas d'elle-même. Seul bouton : « Fermer ». Aucun effacement automatique, aucun bouton qui efface (une réinitialisation explicite sera décidée plus tard). Toute autre erreur d'ouverture donne un écran générique, sans détail technique ; rien n'est journalisé.
 
-**Volontairement absent** (étape E5) : totaux du jour, historique complet, avertissement de premier lancement, écran Licences. Pas d'export, pas d'INTERNET.
+Totaux du jour, historique, avertissement de premier lancement et écran Licences : voir « Écrans (E5) ». Pas d'export, pas d'INTERNET.
 
 **Tests.** JVM : `SaisieViewModelTest` (faux journal en mémoire, horloge fixe 10/11/2026 Europe/Paris, temps virtuel), `OuvertureViewModelTest`, `SaisieIntegrationTest` (Robolectric, vraie base Room en mémoire non chiffrée : annulation persistée, prise annulée exclue de `totauxDuJour`), `UiGardeFousTest` (vocabulaire interdit dans `ui/` et `strings.xml` ; « trop » n'est toléré que dans « Saisie trop grande », exception écrite dans le test). Instrumentés : `SaisieUiTest` (Compose, faux journal : jamais la vraie base ni l'alias Keystore de production).
 
 Dépendances ajoutées : `androidx.lifecycle` 2.9.4 (viewmodel-compose, runtime-compose ; version déjà résolue par Compose/Activity), `kotlinx-coroutines-test` 1.9.0 (tests, aligné sur coroutines-core), `ui-test-junit4` et `ui-test-manifest` (via le BOM Compose ; manifeste de test ajouté en debug seulement, `MergedManifestPermissionsTest` reste vert).
+
+## Écrans (E5)
+
+**Ce qui existe.** Navigation par un état d'écran (`Ecran`) et `BackHandler` : aucune bibliothèque de navigation. Après l'ouverture réussie de la base :
+1. **Avertissement** (premier lancement) : « Journal personnel, sans garantie. Ce n'est pas un avis médical. Cette application ne donne aucun conseil de dose. » et un seul bouton « J'ai compris ». Tant qu'il n'est pas cliqué, aucun autre écran n'est accessible. L'écran « Données illisibles » d'E4 garde la priorité et n'a toujours aucun bouton d'effacement.
+2. **Aujourd'hui** : pour la journée en cours (heure pivot), total des prises **confirmées** par médicament et par unité (« Testoline : 2 mg »), jamais additionnées entre médicaments ni entre unités ; puis la liste horodatée, annulées visibles et marquées « annulée ». Accès à « Nouvelle prise », Historique, Réglages, À propos.
+3. **Historique** : journée par journée (précédente / suivante, jamais au-delà d'aujourd'hui), mêmes totaux et liste. Sur une prise confirmée : annuler (avec confirmation), réattribuer à la journée précédente, à la suivante (si elle n'est pas dans le futur) ou rétablir la journée calculée. Une prise réattribuée est signalée « réattribuée » ; les totaux des deux journées suivent. Réattribuer vers la journée que l'horodatage donne déjà efface simplement la réattribution.
+4. **Réglages** : heure pivot de 0 h à 23 h (5 h par défaut). Le changement recalcule tout de suite les journées partout (rien n'est figé en base).
+5. **À propos > Licences** : nom, version, notices tierces avec texte complet dépliable.
+
+**Règles.** Journal personnel : aucun conseil, objectif, comparaison ni quantité « permise » ; l'appli ne calcule et n'affiche jamais ce que la personne pourrait prendre. `UiGardeFousTest` balaie toutes les chaînes de `strings.xml` et tous les littéraux de `ui/` (insensible à la casse et aux accents) ; seules exceptions, écrites dans le test : la phrase d'avertissement (« aucun conseil de dose ») et « Saisie trop grande ». `AucunLogAvecDonneesTest` échoue si `app/src/main` contient `android.util.Log`, `Log.`, `println(`, `printStackTrace(` ou `Timber`.
+
+**Préférences.** `SharedPreferences` privées `dosejuste_reglages` (`shared_prefs/dosejuste_reglages.xml`), ouvertes par la seule classe `ReglagesPrefs` (`prefs/Reglages.kt`). Contenu : un entier (`pivot_heure`) et un booléen (`avertissement_accepte`), rien d'autre. Domaine de sauvegarde `sharedpref`, déjà exclu par `data_extraction_rules.xml` et `backup_rules.xml` ; `EmplacementsSauvegardeTest` le vérifie. Effacer les données de l'appli remet pivot 5 h et réaffiche l'avertissement.
+
+**Base.** Schéma Room inchangé (version 1, pas de migration) : la journée se calcule, la réattribution utilisait déjà `journee_forcee`.
+
+**Saisie corrigée.** « Relire » et « Retour » sont dans une barre d'actions fixe sous la zone défilante, au-dessus du clavier (`consumeWindowInsets` + `imePadding`) : les messages d'erreur ne les repoussent plus. Le champ libellé demande une majuscule initiale au clavier (`KeyboardCapitalization.Sentences`) ; aucune transformation de casse à l'affichage (la saisie « Testoline » reste « Testoline » en relecture, liste et total ; l'unicité sans tenir compte de la casse ne modifie pas le libellé stocké).
+
+**Absent.** Export, sauvegarde, rappels, statistiques, comparaisons, thème réglable, réseau, permissions.
+
+**Tests.** JVM : `JourneeViewModelTest` (totaux, pivot, navigation, réattribution), `ReglagesTest`, `PhrasePriseEtLicencesTest`, garde-fous. Instrumentés (`EcransUiTest`, `SaisieUiTest`, à lancer sur le Pixel) : avertissement bloquant, total du jour, pivot 01:30, historique, Licences (« ZETETIC LLC »), « Relire » visible avec erreur.
 
 ## Licences tierces
 
@@ -155,12 +176,14 @@ Dépendances ajoutées : `androidx.lifecycle` 2.9.4 (viewmodel-compose, runtime-
 |---|---|---|
 | AndroidX (Room, SQLite, Activity, Lifecycle, Compose, Test) | Apache 2.0 | oui (Test : non ; `ui-test-manifest` : debug seulement) |
 | Kotlin, kotlinx.coroutines (dont coroutines-test, tests seulement) | Apache 2.0 | oui (coroutines-test : non) |
-| SQLCipher for Android Community Edition (Zetetic LLC) | BSD-style (Zetetic) ; inclut SQLite (domaine public) et une bibliothèque cryptographique dont la notice est à reprendre | oui |
+| SQLCipher for Android Community Edition 4.20.0 (Zetetic LLC, copyright 2008-2023) | BSD-style (Zetetic) | oui |
+| LibTomCrypt (cryptographie embarquée dans `libsqlcipher.so`, vérifié dans l'AAR) | The LibTom license / Unlicense (domaine public) | oui |
+| SQLite (inclus dans SQLCipher) | domaine public | oui |
 | KSP | Apache 2.0 | non (compilation) |
 | Robolectric | MIT | non (tests JVM) |
 | JUnit 4 | EPL 1.0 | non (tests) |
 
-La notice de copyright et la licence de SQLCipher doivent être affichées dans l'écran Licences (E5). À cette étape, relire la notice livrée avec l'AAR 4.20.0 et y reprendre les composants qu'elle cite.
+Les notices sont **affichées dans l'appli** (À propos, Licences), textes complets dans `app/src/main/assets/licences/` : `sqlcipher.txt`, `libtomcrypt.txt`, `apache-2.0.txt` (AndroidX, Kotlin, kotlinx.coroutines). E5 n'ajoute aucune dépendance.
 
 ## Compiler
 

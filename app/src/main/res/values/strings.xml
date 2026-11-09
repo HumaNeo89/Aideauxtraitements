@@ -4,12 +4,10 @@
     <string name="disclaimer">Journal personnel. Cette application ne donne aucun conseil médical ni de dose.</string>
 
     <!-- Écran principal -->
-    <string name="ecran_titre">Aujourd\'hui (saisie)</string>
+    <string name="ecran_titre">Aujourd\'hui</string>
     <string name="nouvelle_prise">Nouvelle prise</string>
     <string name="liste_titre">Prises de la journée</string>
     <string name="liste_vide">Aucune prise enregistrée pour cette journée.</string>
-    <string name="journee_courante">Journée en cours</string>
-    <string name="journee_precedente">Journée précédente</string>
     <string name="prise_annulee">annulée</string>
     <string name="prise_annulee_description">Prise annulée : %1$s</string>
     <string name="annuler_cette_prise">Annuler cette prise</string>
@@ -70,4 +68,41 @@
     <string name="ouverture_erreur_titre">Ouverture impossible</string>
     <string name="ouverture_erreur_texte">L\'application n\'a pas pu ouvrir ses données. Fermez-la puis rouvrez-la.</string>
     <string name="fermer">Fermer</string>
+
+    <!-- Avertissement de premier lancement -->
+    <string name="avertissement_titre">Avant de commencer</string>
+    <!-- Seule phrase qui cite « conseil de dose » : pour dire qu'il n'y en a aucun. -->
+    <string name="avertissement_texte">Journal personnel, sans garantie. Ce n\'est pas un avis médical. Cette application ne donne aucun conseil de dose.</string>
+    <string name="avertissement_ok">J\'ai compris</string>
+
+    <!-- Navigation -->
+    <string name="historique">Historique</string>
+    <string name="reglages">Réglages</string>
+    <string name="a_propos">À propos</string>
+    <string name="retour_ecran">Retour à l\'écran précédent</string>
+
+    <!-- Totaux et listes -->
+    <string name="totaux_titre">Total par médicament et par unité</string>
+    <string name="totaux_vide">Aucune prise confirmée pour cette journée.</string>
+    <string name="journee_precedente_bouton">Journée précédente</string>
+    <string name="journee_suivante_bouton">Journée suivante</string>
+    <string name="prise_reattribuee">réattribuée</string>
+    <string name="reattribuer_veille">Réattribuer à la journée précédente</string>
+    <string name="reattribuer_lendemain">Réattribuer à la journée suivante</string>
+    <string name="reattribuer_retablir">Rétablir la journée calculée</string>
+    <string name="actions_prise_description">Actions sur la prise : %1$s</string>
+
+    <!-- Réglages -->
+    <string name="pivot_titre">Heure pivot</string>
+    <string name="pivot_explication">Une prise entre minuit et l\'heure pivot compte pour la journée précédente.</string>
+    <string name="pivot_valeur">%1$d h</string>
+    <string name="pivot_choisir">Heure pivot : %1$d h</string>
+
+    <!-- À propos et licences -->
+    <string name="a_propos_version">Dose Juste, version %1$s</string>
+    <string name="licences_ouvrir">Licences</string>
+    <string name="licences_intro">Dose Juste utilise les composants suivants. Chaque notice est reproduite en entier.</string>
+    <string name="licence_texte_afficher">Afficher le texte complet</string>
+    <string name="licence_texte_masquer">Masquer le texte</string>
+    <string name="licence_illisible">Le texte de cette licence n\'a pas pu être lu.</string>
 </resources>

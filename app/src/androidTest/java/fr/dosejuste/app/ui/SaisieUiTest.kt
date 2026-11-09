@@ -51,7 +51,8 @@ class SaisieUiTest {
     fun saisieRelectureEnregistrementEtAnnulationRapide() {
         val journal = FauxJournal()
         val vm = SaisieViewModel(journal, horloge, JourneeCalculator())
-        rule.setContent { DoseJusteTheme { EcranSaisie(vm) } }
+        val jour = JourneeViewModel(journal, FauxReglages(), horloge)
+        rule.setContent { DoseJusteTheme { EcranAujourdhui(vm, jour, Navigation({}, {}, {})) } }
 
         // L'en-tête (nom + avertissement) reste visible.
         rule.onNodeWithText(texte(R.string.disclaimer)).assertIsDisplayed()
@@ -76,6 +77,10 @@ class SaisieUiTest {
         rule.onNodeWithText(message).assertIsDisplayed()
         rule.onNodeWithText(texte(R.string.annuler)).assertIsDisplayed()
         assertEquals(StatutPrise.CONFIRMEE, journal.prises.value.single().statut)
+        // Casse conservée telle que saisie : dans la liste et dans le total.
+        attendreTexte("Testoline : 2 mg")
+        rule.onNodeWithText("14:05 — 2 mg de Testoline").assertIsDisplayed()
+        assertEquals("Testoline", journal.prises.value.single().medicament)
 
         rule.onNodeWithText(texte(R.string.annuler)).performClick()
         attendreTexte(texte(R.string.prise_annulee))
@@ -88,11 +93,12 @@ class SaisieUiTest {
     fun annulationDepuisLaListeAvecConfirmation() {
         val journal = FauxJournal()
         val vm = SaisieViewModel(journal, horloge, JourneeCalculator())
+        val jour = JourneeViewModel(journal, FauxReglages(), horloge)
         kotlinx.coroutines.runBlocking {
             val med = journal.ajouterMedicament("Testoline B")
             journal.enregistrerPrise(med.id, Quantite(25), Unite.MG, maintenant.minusSeconds(3600))
         }
-        rule.setContent { DoseJusteTheme { EcranSaisie(vm) } }
+        rule.setContent { DoseJusteTheme { EcranAujourdhui(vm, jour, Navigation({}, {}, {})) } }
 
         val ligne = "13:05 — 0,25 mg de Testoline B"
         attendreTexte(ligne)
@@ -108,7 +114,7 @@ class SaisieUiTest {
     @Test
     fun donneesIllisiblesAfficheUnEcranSansBoutonQuiEfface() {
         val ouverture = OuvertureViewModel({ throw DonneesIllisiblesException.CleKeystoreAbsente() })
-        rule.setContent { DoseJusteTheme { fr.dosejuste.app.ui.DoseJusteApp(ouverture, onFermer = {}) } }
+        rule.setContent { DoseJusteTheme { fr.dosejuste.app.ui.DoseJusteApp(ouverture, FauxReglages(accepte = false), onFermer = {}) } }
 
         attendreTexte(texte(R.string.illisibles_titre))
         rule.onNodeWithText(texte(R.string.illisibles_texte)).assertIsDisplayed()
