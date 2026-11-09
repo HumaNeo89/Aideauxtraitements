@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: assembleDebug, lint, tests unitaires
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Configurer le JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configurer Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Emplacement du SDK Android
+        id: sdk
+        run: echo "path=$HOME/android-sdk" >> "$GITHUB_OUTPUT"
+
+      - name: Cache du SDK Android
+        id: sdk-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.sdk.outputs.path }}
+          key: android-sdk-37.0-build-tools-36.0.0-v1
+
+      - name: Installer la plateforme Android 37
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        env:
+          ANDROID_SDK_ROOT: ${{ steps.sdk.outputs.path }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -fsSL -o /tmp/commandlinetools.zip \
+            "https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip"
+          rm -rf /tmp/cmdline-tools
+          unzip -q /tmp/commandlinetools.zip -d /tmp
+          rm -rf "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          mv /tmp/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            --install "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Exporter ANDROID_HOME
+        run: |
+          echo "ANDROID_HOME=${{ steps.sdk.outputs.path }}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${{ steps.sdk.outputs.path }}" >> "$GITHUB_ENV"
+
+      - name: Compiler, lint, tests unitaires
+        run: ./gradlew assembleDebug lint test --stacktrace
+
+      - name: Publier l'APK debug
+        uses: actions/upload-artifact@v7
+        with:
+          name: dose-juste-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

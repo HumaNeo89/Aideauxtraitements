@@ -1,0 +1,29 @@
+# Secrets, signature, chemins locaux — jamais dans ce dépôt public
+*.jks
+*.keystore
+keystore.properties
+local.properties
+.env
+.env.*
+.env*
+
+# Build
+.gradle/
+build/
+**/build/
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk
+*.ap_
+*.aab
+*.dm
+*.dex
+output-metadata.json
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+*.hprof
