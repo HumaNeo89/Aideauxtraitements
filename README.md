@@ -51,7 +51,7 @@ JDK 17 ou 21, et un Android SDK avec la plateforme `android-37.0` (ou les licenc
 ./gradlew assembleDebug lint test
 ```
 
-L'APK debug est `app/build/outputs/apk/debug/app-debug.apk`. La CI GitHub Actions lance la même commande sur les pull requests, sans secret.
+L'APK debug est `app/build/outputs/apk/debug/app-debug.apk`. La CI GitHub Actions lance la même commande sur les pull requests, sans secret, et publie cet APK comme artefact `dose-juste-debug-apk` (conservé 14 jours). Ce n'est pas un APK release signé.
 
 ## Contrôle sur un Pixel 7 Pro
 

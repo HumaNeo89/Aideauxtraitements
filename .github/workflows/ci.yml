@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,16 +21,16 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Récupérer le code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurer le JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Configurer Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Emplacement du SDK Android
         id: sdk
@@ -37,7 +38,7 @@ jobs:
 
       - name: Cache du SDK Android
         id: sdk-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.sdk.outputs.path }}
           key: android-sdk-37.0-build-tools-36.0.0-v1
@@ -68,3 +69,11 @@ jobs:
 
       - name: Compiler, lint, tests unitaires
         run: ./gradlew assembleDebug lint test --stacktrace
+
+      - name: Publier l'APK debug
+        uses: actions/upload-artifact@v7
+        with:
+          name: dose-juste-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
