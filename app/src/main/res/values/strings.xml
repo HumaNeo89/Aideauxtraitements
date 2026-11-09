@@ -2,4 +2,72 @@
 <resources>
     <string name="app_name">Dose Juste</string>
     <string name="disclaimer">Journal personnel. Cette application ne donne aucun conseil médical ni de dose.</string>
+
+    <!-- Écran principal -->
+    <string name="ecran_titre">Aujourd\'hui (saisie)</string>
+    <string name="nouvelle_prise">Nouvelle prise</string>
+    <string name="liste_titre">Prises de la journée</string>
+    <string name="liste_vide">Aucune prise enregistrée pour cette journée.</string>
+    <string name="journee_courante">Journée en cours</string>
+    <string name="journee_precedente">Journée précédente</string>
+    <string name="prise_annulee">annulée</string>
+    <string name="prise_annulee_description">Prise annulée : %1$s</string>
+    <string name="annuler_cette_prise">Annuler cette prise</string>
+    <string name="annuler_prise_description">Annuler la prise : %1$s</string>
+    <string name="confirmation_titre">Annuler cette prise ?</string>
+    <string name="confirmation_texte">La prise « %1$s » sera marquée comme annulée. La ligne est conservée.</string>
+    <string name="confirmation_oui">Annuler la prise</string>
+    <string name="confirmation_non">Garder la prise</string>
+    <string name="erreur_operation">L\'opération a échoué. Réessayez.</string>
+
+    <!-- Après enregistrement -->
+    <string name="prise_enregistree">Prise enregistrée : %1$s</string>
+    <string name="annuler">Annuler</string>
+
+    <!-- Formulaire -->
+    <string name="formulaire_titre">Nouvelle prise</string>
+    <string name="medicament_titre">Médicament</string>
+    <string name="medicament_aucun">Aucun médicament dans votre liste. Ajoutez un libellé ci-dessous.</string>
+    <string name="medicament_choisir">Choisir le médicament %1$s</string>
+    <string name="libelle_champ">Nouveau libellé de médicament</string>
+    <string name="libelle_ajouter">Ajouter à ma liste</string>
+    <string name="erreur_medicament_manquant">Choisissez un médicament.</string>
+    <string name="erreur_libelle_vide">Le libellé est vide.</string>
+    <string name="erreur_libelle_doublon">Ce libellé est déjà dans votre liste.</string>
+
+    <string name="quantite_champ">Quantité</string>
+    <string name="erreur_quantite_vide">Saisissez une quantité.</string>
+    <string name="erreur_quantite_format">Format non reconnu. Exemples : 0,25 ou 1.</string>
+    <string name="erreur_quantite_decimales">Plus de 2 chiffres après la virgule.</string>
+    <string name="erreur_quantite_nulle">La quantité doit être supérieure à zéro.</string>
+    <string name="erreur_quantite_grande">Saisie trop grande. Vérifiez le nombre.</string>
+
+    <string name="unite_titre">Unité</string>
+    <string name="unite_mg">mg</string>
+    <string name="unite_comprime">comprimé</string>
+    <string name="unite_goutte">goutte</string>
+    <string name="unite_ml">ml</string>
+
+    <string name="heure_titre">Date et heure</string>
+    <string name="jour_aujourdhui">Aujourd\'hui</string>
+    <string name="jour_hier">Hier</string>
+    <string name="heure_modifier">Heure : %1$s. Modifier</string>
+    <string name="heure_dialogue_titre">Choisir l\'heure</string>
+    <string name="heure_ok">OK</string>
+    <string name="retour">Retour</string>
+    <string name="erreur_heure_futur">L\'heure choisie est dans le futur.</string>
+
+    <string name="relire">Relire</string>
+    <string name="relecture_titre">Relecture</string>
+    <string name="relecture_intro">Vérifiez la prise avant de l\'enregistrer :</string>
+    <string name="enregistrer">Enregistrer</string>
+    <string name="modifier">Modifier</string>
+
+    <!-- Ouverture de la base -->
+    <string name="chargement">Chargement…</string>
+    <string name="illisibles_titre">Données illisibles</string>
+    <string name="illisibles_texte">La clé de chiffrement de vos données est perdue ou n\'est plus valide. L\'application ne peut pas les lire. Elle ne les efface pas d\'elle-même.</string>
+    <string name="ouverture_erreur_titre">Ouverture impossible</string>
+    <string name="ouverture_erreur_texte">L\'application n\'a pas pu ouvrir ses données. Fermez-la puis rouvrez-la.</string>
+    <string name="fermer">Fermer</string>
 </resources>

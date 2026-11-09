@@ -24,7 +24,7 @@ class SourcesGardeFousTest {
         return dossier.walk().filter { it.isFile && it.extension == "kt" }.toList()
     }
 
-    private val couches get() = sources("data") + sources("security")
+    private val couches get() = sources("data") + sources("security") + sources("ui")
 
     @Test
     fun aucunVocabulaireDeConseil() {
