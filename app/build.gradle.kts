@@ -72,6 +72,8 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.androidx.sqlite)
     implementation(libs.sqlcipher.android)
+    // Contrainte (pas de dépendance directe) : aligne core sur le json 1.8.1 de room-testing.
+    constraints { implementation(libs.kotlinx.serialization.core) }
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
