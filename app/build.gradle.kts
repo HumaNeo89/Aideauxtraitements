@@ -1,9 +1,50 @@
+import java.util.Properties
 import org.gradle.api.tasks.testing.Test
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+}
+
+// Signature release : keystore.properties (racine du dépôt) d'abord, sinon variables d'environnement
+// DOSEJUSTE_*. Aucune valeur secrète n'est jamais affichée.
+class SignatureRelease(
+    val storeFile: String,
+    val storePassword: String,
+    val keyAlias: String,
+    val keyPassword: String,
+)
+
+val signatureRelease: SignatureRelease? = run {
+    val fichier = rootProject.file("keystore.properties")
+    val props = Properties()
+    if (fichier.isFile) fichier.inputStream().use { props.load(it) }
+    val source = if (fichier.isFile) "keystore.properties" else "variables d'environnement DOSEJUSTE_*"
+
+    fun valeur(cle: String, env: String): String =
+        if (fichier.isFile) props.getProperty(cle).orEmpty().trim() else System.getenv(env).orEmpty().trim()
+
+    val chemin = valeur("storeFile", "DOSEJUSTE_STORE_FILE").ifEmpty { "D:/humaneo/cles/dosejuste-release.jks" }
+    val motDePasse = valeur("storePassword", "DOSEJUSTE_STORE_PASSWORD")
+    val alias = valeur("keyAlias", "DOSEJUSTE_KEY_ALIAS")
+    val motDePasseCle = valeur("keyPassword", "DOSEJUSTE_KEY_PASSWORD")
+
+    val manquants = buildList {
+        if (motDePasse.isEmpty()) add("storePassword")
+        if (alias.isEmpty()) add("keyAlias")
+        if (motDePasseCle.isEmpty()) add("keyPassword")
+        if (!file(chemin).isFile) add("fichier keystore introuvable : $chemin")
+    }
+    if (manquants.isEmpty()) {
+        SignatureRelease(chemin, motDePasse, alias, motDePasseCle)
+    } else {
+        logger.warn(
+            "Signature release non configurée (source : $source ; manquant : ${manquants.joinToString(", ")}) : " +
+                "l'APK release sera NON signé. Voir docs/release.md.",
+        )
+        null
+    }
 }
 
 android {
@@ -19,13 +60,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // Signature release, seulement si la configuration est complète (voir docs/release.md).
+        if (signatureRelease != null) {
+            create("release") {
+                storeFile = file(signatureRelease.storeFile)
+                storePassword = signatureRelease.storePassword
+                keyAlias = signatureRelease.keyAlias
+                keyPassword = signatureRelease.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (signatureRelease != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

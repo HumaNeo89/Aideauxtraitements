@@ -1,7 +1,9 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) saisie d'une prise avec annulation (E4) et écrans Aujourd'hui, Historique, Réglages, Avertissement, Licences (E5).
+État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) saisie d'une prise avec annulation (E4) et écrans Aujourd'hui, Historique, Réglages, Avertissement, Licences (E5), build release préparée : signature conditionnelle et R8 (E6).
+
+Build release signée : voir [docs/release.md](docs/release.md).
 
 ## Avertissement
 
