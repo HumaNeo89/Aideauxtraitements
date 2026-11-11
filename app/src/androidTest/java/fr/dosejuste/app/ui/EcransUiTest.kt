@@ -1,5 +1,6 @@
 package fr.dosejuste.app.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -164,7 +165,12 @@ class EcransUiTest {
         assertTrue(existe("LibTomCrypt", substring = true))
         assertTrue(existe("SQLite"))
         assertTrue(existe("AndroidX", substring = true))
+        assertTrue(existe("androidx.sqlite", substring = true))
+        assertTrue(existe("Kotlin"))
         assertTrue(existe("kotlinx.coroutines"))
+
+        // Exactement 3 boutons : SQLCipher, LibTomCrypt, groupe Apache.
+        rule.onAllNodesWithText(texte(R.string.licence_texte_afficher)).assertCountEquals(3)
 
         // Texte complet de SQLCipher (premier bouton « Afficher le texte complet »).
         rule.onAllNodesWithText(texte(R.string.licence_texte_afficher))[0].performScrollTo().performClick()

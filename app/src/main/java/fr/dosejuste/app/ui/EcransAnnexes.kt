@@ -108,19 +108,25 @@ private fun lireAsset(contexte: Context): LecteurLicence = { fichier ->
 fun EcranLicences(onRetour: () -> Unit, lecteur: LecteurLicence = lireAsset(LocalContext.current)) {
     EcranSecondaire(titre = stringResource(R.string.licences_ouvrir), onRetour = onRetour) {
         Text(stringResource(R.string.licences_intro), style = MaterialTheme.typography.bodyMedium)
-        Licences.notices.forEach { NoticeVue(it, lecteur) }
+        // Notices regroupées par fichier de texte : un seul bouton par fichier.
+        Licences.notices.groupBy { it.fichierTexte ?: it.titre }.values.forEach { NoticeVue(it, lecteur) }
     }
 }
 
 @Composable
-private fun NoticeVue(notice: NoticeTierce, lecteur: LecteurLicence) {
+private fun NoticeVue(notices: List<NoticeTierce>, lecteur: LecteurLicence) {
     var deplie by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(notice.titre, style = MaterialTheme.typography.titleMedium)
-        Text(notice.copyright, style = MaterialTheme.typography.bodyMedium)
-        Text(notice.licence, style = MaterialTheme.typography.bodyMedium)
-        val fichier = notice.fichierTexte
+        notices.forEach { notice ->
+            Text(notice.titre, style = MaterialTheme.typography.titleMedium)
+            Text(notice.copyright, style = MaterialTheme.typography.bodyMedium)
+            Text(notice.licence, style = MaterialTheme.typography.bodyMedium)
+        }
+        val fichier = notices.first().fichierTexte
         if (fichier != null) {
+            if (notices.size > 1) {
+                Text(stringResource(R.string.licence_texte_groupe, notices.size), style = MaterialTheme.typography.bodyMedium)
+            }
             TextButton(onClick = { deplie = !deplie }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(stringResource(if (deplie) R.string.licence_texte_masquer else R.string.licence_texte_afficher))
             }

@@ -103,6 +103,7 @@
     <string name="licences_ouvrir">Licences</string>
     <string name="licences_intro">Dose Juste utilise les composants suivants. Chaque notice est reproduite en entier.</string>
     <string name="licence_texte_afficher">Afficher le texte complet</string>
+    <string name="licence_texte_groupe">Ce texte s’applique aux %1$d composants ci-dessus.</string>
     <string name="licence_texte_masquer">Masquer le texte</string>
     <string name="licence_illisible">Le texte de cette licence n\'a pas pu être lu.</string>
 </resources>

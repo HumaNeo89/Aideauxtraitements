@@ -5,6 +5,7 @@ import fr.dosejuste.app.domain.Unite
 import java.io.File
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,6 +61,14 @@ class PhrasePriseEtLicencesTest {
         for (attendu in listOf("SQLCipher", "4.20.0", "LibTomCrypt", "SQLite", "AndroidX", "Kotlin", "kotlinx.coroutines")) {
             assertTrue(attendu, titres.contains(attendu))
         }
+        assertEquals(6, Licences.notices.size)
+        assertTrue(Licences.notices.any { it.titre.contains("AndroidX") && it.titre.contains("androidx.sqlite") })
+        assertFalse(Licences.notices.first { it.titre.contains("AndroidX") }.titre.contains("SQLite"))
+        // 3 boutons : SQLCipher, LibTomCrypt, groupe Apache.
+        assertEquals(3, Licences.notices.mapNotNull { it.fichierTexte }.toSet().size)
+        // SQLite : une seule ligne « Domaine public ».
+        val sqlite = Licences.notices.first { it.titre == "SQLite" }
+        assertEquals(1, listOf(sqlite.copyright, sqlite.licence).count { it.contains("Domaine public") })
         assertTrue(Licences.notices.first().copyright.contains("2008-2023 ZETETIC LLC"))
     }
 }

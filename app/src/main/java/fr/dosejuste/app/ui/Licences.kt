@@ -29,12 +29,12 @@ object Licences {
         ),
         NoticeTierce(
             titre = "SQLite",
-            copyright = "Domaine public : les auteurs ont renoncé à leurs droits",
+            copyright = "Les auteurs ont renoncé à leurs droits",
             licence = "Domaine public",
             fichierTexte = null,
         ),
         NoticeTierce(
-            titre = "AndroidX (Room, SQLite, Activity, Lifecycle, Compose)",
+            titre = "AndroidX (Room, androidx.sqlite, Activity, Lifecycle, Compose)",
             copyright = "Copyright The Android Open Source Project",
             licence = "Apache License 2.0",
             fichierTexte = "apache-2.0.txt",
