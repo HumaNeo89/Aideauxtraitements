@@ -1,7 +1,9 @@
 # Dose Juste
 
 Application Android personnelle de suivi des prises de médicaments.
-État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) saisie d'une prise avec annulation (E4) et écrans Aujourd'hui, Historique, Réglages, Avertissement, Licences (E5).
+État : squelette (E1), domaine journée/quantité (E2), base locale chiffrée (E3) saisie d'une prise avec annulation (E4) et écrans Aujourd'hui, Historique, Réglages, Avertissement, Licences (E5), build release préparée : signature conditionnelle et R8 (E6).
+
+Build release signée : voir [docs/release.md](docs/release.md).
 
 ## Avertissement
 
@@ -133,9 +135,9 @@ Lancer les tests instrumentés sur le téléphone (débogage USB activé, une se
 
 Code dans `app/src/main/java/fr/dosejuste/app/ui/` : une seule activité, Compose Material 3, pas de bibliothèque de navigation (un état d'écran suffit), pas d'injection de dépendances.
 
-**Parcours.** Écran « Aujourd'hui » : nom de l'appli et phrase d'avertissement toujours visibles, bouton « Nouvelle prise », liste des prises de la journée (« 14:05 — 0,25 mg de Testoline », mention « annulée » en rouge si annulée). Depuis E5, totaux et liste viennent de `JourneeViewModel` (voir « Écrans (E5) ») ; `SaisieViewModel` ne garde que le formulaire et l'annulation rapide. Une prise saisie à 01:30 « aujourd'hui » compte pour la veille avec le pivot 5 h.
+**Parcours.** Écran « Aujourd'hui » : nom de l'appli et phrase d'avertissement toujours visibles, bouton « Nouvelle prise », liste des prises de la journée (« 14:05 — 0,25 mg de Testoline », ligne barrée et badge « annulée » si annulée ; design dans `docs/design.md`). Depuis E5, totaux et liste viennent de `JourneeViewModel` (voir « Écrans (E5) ») ; `SaisieViewModel` ne garde que le formulaire et l'annulation rapide. Une prise saisie à 01:30 « aujourd'hui » compte pour la veille avec le pivot 5 h.
 
-Formulaire : médicament (liste personnelle, vide au départ ; un libellé s'ajoute par un champ texte, refus du vide et des doublons sans tenir compte de la casse), quantité (clavier décimal, `Quantite.analyser`, un message français par motif de refus, neutre : « Saisie trop grande », jamais de conseil), unité (liste fermée : mg, comprimé, goutte, ml), jour « Aujourd'hui » ou « Hier » (jour civil) et heure (TimePicker 24 h, par défaut maintenant à la minute). Une heure après maintenant est refusée. « Relire » ouvre un dialogue : « 2 mg de Testoline à 14:05 » (« hier à 01:30 » si hier). **Rien n'est écrit avant « Enregistrer »**, « Modifier » revient au formulaire avec les valeurs saisies.
+Formulaire : médicament (liste personnelle, vide au départ ; un libellé s'ajoute par un champ texte, refus du vide et des doublons sans tenir compte de la casse), quantité (clavier décimal, `Quantite.analyser`, un message français par motif de refus, neutre : « Saisie trop grande », jamais de conseil), unité (liste fermée : mg, comprimé, goutte, ml), jour « Aujourd'hui » ou « Hier » (jour civil) et heure (TimePicker 24 h, par défaut maintenant à la minute). Une heure après maintenant est refusée. « Ajouter » (anciennement « Relire » ; identifiants internes `relire` inchangés) ouvre un dialogue de relecture : « 2 mg de Testoline à 14:05 » (« hier à 01:30 » si hier). **Rien n'est écrit avant « Enregistrer »**, « Modifier » revient au formulaire avec les valeurs saisies.
 
 **Règle des 10 secondes.** Après « Enregistrer », la prise est en base (CONFIRMEE) et un Snackbar « Prise enregistrée : … » propose « Annuler » pendant 10 s exactement. Le délai est piloté par le ViewModel (`delay(10 s)`), pas par `SnackbarDuration` : le Snackbar est affiché sans durée propre tant que l'état `annulationRapide` existe. À 9,9 s, « Annuler » passe la prise en ANNULEE (la ligne reste, exclue des totaux). À 10,0 s l'action disparaît et plus rien ne l'exécute. Un nouvel enregistrement remplace l'annulation rapide de la précédente.
 
@@ -164,11 +166,11 @@ Dépendances ajoutées : `androidx.lifecycle` 2.9.4 (viewmodel-compose, runtime-
 
 **Base.** Schéma Room inchangé (version 1, pas de migration) : la journée se calcule, la réattribution utilisait déjà `journee_forcee`.
 
-**Saisie corrigée.** « Relire » et « Retour » sont dans une barre d'actions fixe sous la zone défilante, au-dessus du clavier (`consumeWindowInsets` + `imePadding`) : les messages d'erreur ne les repoussent plus. Le champ libellé demande une majuscule initiale au clavier (`KeyboardCapitalization.Sentences`) ; aucune transformation de casse à l'affichage (la saisie « Testoline » reste « Testoline » en relecture, liste et total ; l'unicité sans tenir compte de la casse ne modifie pas le libellé stocké).
+**Saisie corrigée.** « Ajouter » (ouvre la relecture) et « Retour » sont dans une barre d'actions fixe sous la zone défilante, au-dessus du clavier (`consumeWindowInsets` + `imePadding`) : les messages d'erreur ne les repoussent plus. Le champ libellé demande une majuscule initiale au clavier (`KeyboardCapitalization.Sentences`) ; aucune transformation de casse à l'affichage (la saisie « Testoline » reste « Testoline » en relecture, liste et total ; l'unicité sans tenir compte de la casse ne modifie pas le libellé stocké).
 
 **Absent.** Export, sauvegarde, rappels, statistiques, comparaisons, thème réglable, réseau, permissions.
 
-**Tests.** JVM : `JourneeViewModelTest` (totaux, pivot, navigation, réattribution), `ReglagesTest`, `PhrasePriseEtLicencesTest`, garde-fous. Instrumentés (`EcransUiTest`, `SaisieUiTest`, à lancer sur le Pixel) : avertissement bloquant, total du jour, pivot 01:30, historique, Licences (« ZETETIC LLC »), « Relire » visible avec erreur.
+**Tests.** JVM : `JourneeViewModelTest` (totaux, pivot, navigation, réattribution), `ReglagesTest`, `PhrasePriseEtLicencesTest`, garde-fous. Instrumentés (`EcransUiTest`, `SaisieUiTest`, à lancer sur le Pixel) : avertissement bloquant, total du jour, pivot 01:30, historique, Licences (« ZETETIC LLC »), « Ajouter » (tag `relire`) visible avec erreur.
 
 ## Licences tierces
 
@@ -200,6 +202,6 @@ JDK 17 ou 21, et un Android SDK avec la plateforme `android-37.0` (ou les licenc
 1. Installer l'APK debug. L'écran affiche « Dose Juste », la phrase qui refuse tout conseil médical ou de dose et « Nouvelle prise ». Aucune autorisation n'est demandée.
 2. Réglages, Applications, Dose Juste, Autorisations : aucune autorisation n'est demandée ni accordée.
 3. Mode avion, rouvrir l'appli : le même écran, sans erreur réseau.
-4. Ajouter un médicament fictif (« Testoline »), saisir 2 mg, « Relire », « Enregistrer », puis « Annuler » dans les 10 s : la prise apparaît « annulée ».
+4. Ajouter un médicament fictif (« Testoline »), saisir 2 mg, « Ajouter » (dialogue de relecture), « Enregistrer », puis « Annuler » dans les 10 s : la prise apparaît « annulée ».
 
 La base chiffrée de production est désormais ouverte et créée au premier lancement : ne pas y entrer un vrai traitement avant la fin de la phase de test. Attention, `connectedDebugAndroidTest` désinstalle l'appli debug et efface cette base.

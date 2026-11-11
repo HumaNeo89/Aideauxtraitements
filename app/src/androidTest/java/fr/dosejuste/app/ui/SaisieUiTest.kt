@@ -60,7 +60,7 @@ class SaisieUiTest {
         rule.onNodeWithTag(Tags.CHAMP_LIBELLE).performTextInput("Testoline")
         rule.onNodeWithTag(Tags.AJOUTER_LIBELLE).performClick()
         rule.onNodeWithTag(Tags.CHAMP_QUANTITE).performTextInput("2")
-        // Ferme le clavier (il masquait la boîte de relecture). « Relire » est dans la barre fixe,
+        // Ferme le clavier (il masquait la boîte de relecture). « Ajouter » (tag RELIRE) est dans la barre fixe,
         // hors zone défilable : pas de scroll possible, on exige qu'il soit affiché avant le clic.
         Espresso.closeSoftKeyboard()
         rule.waitForIdle()
