@@ -4,7 +4,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="50"
+        android:rotation="-45">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,40 L40,40 A10,10 0 0 0 40,60 L54,60 Z" />
+        <path
+            android:fillColor="#8CD0D8"
+            android:pathData="M54,40 L68,40 A10,10 0 0 1 68,60 L54,60 Z" />
+    </group>
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,32c-12.15,0 -22,9.85 -22,22s9.85,22 22,22 22,-9.85 22,-22 -9.85,-22 -22,-22z" />
+        android:fillColor="#EDC08A"
+        android:pathData="M44,76 H64 A2,2 0 0 1 66,78 A2,2 0 0 1 64,80 H44 A2,2 0 0 1 42,78 A2,2 0 0 1 44,76 Z" />
 </vector>

@@ -98,12 +98,12 @@ class EcransUiTest {
         lancer(FauxReglages())
 
         attendreTexte("Testoline : 2 mg")
-        rule.onNodeWithText("Testoline : 2 mg").assertIsDisplayed()
+        rule.onNodeWithText("Testoline : 2 mg").performScrollTo().assertIsDisplayed()
         assertFalse(existe("Testoline : 3 mg"))
         // La liste montre les deux prises, l'annulée est marquée.
-        rule.onNodeWithText("08:00 — 2 mg de Testoline").assertIsDisplayed()
-        rule.onNodeWithText("09:00 — 1 mg de Testoline").assertIsDisplayed()
-        rule.onNodeWithText(texte(R.string.prise_annulee)).assertIsDisplayed()
+        rule.onNodeWithText("08:00 — 2 mg de Testoline").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("09:00 — 1 mg de Testoline").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(texte(R.string.prise_annulee)).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -140,15 +140,16 @@ class EcransUiTest {
         // Journée en cours : « Journée suivante » est inactive, pas de réattribution vers le futur.
         attendreTexte(texte(R.string.reattribuer_veille))
         assertFalse(existe(texte(R.string.reattribuer_lendemain)))
-        rule.onNodeWithText(texte(R.string.reattribuer_veille)).performClick()
+        // Barre du haut + en-tête : la ligne peut être bas dans l'écran, on la fait défiler avant le clic.
+        rule.onNodeWithText(texte(R.string.reattribuer_veille)).performScrollTo().performClick()
         rule.waitUntil(5_000) { !existe("09:00 — 1 mg de Testoline") }
         assertEquals(LocalDate.parse("2026-11-09"), journal.prises.value.single().journeeForcee)
 
         rule.onNodeWithTag(Tags.JOURNEE_PRECEDENTE).performClick()
         attendreTexte("09:00 — 1 mg de Testoline")
-        rule.onNodeWithText(texte(R.string.prise_reattribuee)).assertIsDisplayed()
-        rule.onNodeWithText("Testoline : 1 mg").assertIsDisplayed()
-        rule.onNodeWithText(texte(R.string.reattribuer_retablir)).performClick()
+        rule.onNodeWithText(texte(R.string.prise_reattribuee)).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Testoline : 1 mg").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText(texte(R.string.reattribuer_retablir)).performScrollTo().performClick()
         rule.waitUntil(5_000) { !existe("09:00 — 1 mg de Testoline") }
     }
 
@@ -186,6 +187,7 @@ class EcransUiTest {
 
         rule.onNodeWithTag(Tags.NOUVELLE_PRISE).performClick()
         rule.onNodeWithTag(Tags.CHAMP_QUANTITE).performTextInput("abc")
+        // Tags.RELIRE : bouton affiché « Ajouter » (ouvre la relecture, n'écrit rien).
         // Clavier encore ouvert : la barre d'actions doit rester à l'écran.
         rule.onNodeWithTag(Tags.RELIRE).assertIsDisplayed()
         rule.onNodeWithTag(Tags.RELIRE).performClick()

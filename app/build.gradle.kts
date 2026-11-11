@@ -139,6 +139,9 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.coroutines.test)
+    // Captures d'écran du design (Robolectric, rendu natif) : tests JVM seulement, rien dans l'APK.
+    testImplementation(composeBom)
+    testImplementation(libs.compose.ui.test.junit4)
 
     debugImplementation(libs.compose.ui.test.manifest)
     androidTestImplementation(composeBom)

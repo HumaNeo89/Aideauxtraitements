@@ -55,7 +55,8 @@
     <string name="retour">Retour</string>
     <string name="erreur_heure_futur">L\'heure choisie est dans le futur.</string>
 
-    <string name="relire">Relire</string>
+    <!-- Identifiant interne « relire » conservé : le bouton ouvre la relecture, rien n'est écrit avant « Enregistrer ». -->
+    <string name="relire">Ajouter</string>
     <string name="relecture_titre">Relecture</string>
     <string name="relecture_intro">Vérifiez la prise avant de l\'enregistrer :</string>
     <string name="enregistrer">Enregistrer</string>
