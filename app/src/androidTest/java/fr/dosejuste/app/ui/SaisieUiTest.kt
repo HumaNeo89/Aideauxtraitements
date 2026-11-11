@@ -6,7 +6,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -61,10 +60,11 @@ class SaisieUiTest {
         rule.onNodeWithTag(Tags.CHAMP_LIBELLE).performTextInput("Testoline")
         rule.onNodeWithTag(Tags.AJOUTER_LIBELLE).performClick()
         rule.onNodeWithTag(Tags.CHAMP_QUANTITE).performTextInput("2")
-        // Ferme le clavier (il masquait la boîte de relecture), puis amène « Relire » à l'écran.
+        // Ferme le clavier (il masquait la boîte de relecture). « Relire » est dans la barre fixe,
+        // hors zone défilable : pas de scroll possible, on exige qu'il soit affiché avant le clic.
         Espresso.closeSoftKeyboard()
         rule.waitForIdle()
-        rule.onNodeWithTag(Tags.RELIRE).performScrollTo().performClick()
+        rule.onNodeWithTag(Tags.RELIRE).assertIsDisplayed().performClick()
         rule.waitForIdle()
 
         // Relecture : rien n'est encore en base.
