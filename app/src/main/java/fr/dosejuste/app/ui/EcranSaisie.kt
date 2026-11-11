@@ -4,12 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,12 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,11 +63,34 @@ object Tags {
     const val ENREGISTRER = "enregistrer"
     const val MODIFIER = "modifier"
     const val LISTE = "liste_prises"
+    const val RETOUR = "retour_formulaire"
+    const val BARRE_ACTIONS = "barre_actions"
+    const val HISTORIQUE = "ouvrir_historique"
+    const val REGLAGES = "ouvrir_reglages"
+    const val A_PROPOS = "ouvrir_a_propos"
+    const val LICENCES = "ouvrir_licences"
+    const val TOTAUX = "totaux"
+    const val AVERTISSEMENT_OK = "avertissement_ok"
+    const val JOURNEE_PRECEDENTE = "journee_precedente"
+    const val JOURNEE_SUIVANTE = "journee_suivante"
+    const val RETOUR_ECRAN = "retour_ecran"
+    const val PIVOT_PREFIXE = "pivot_"
 }
 
-/** Écran « Aujourd'hui (saisie) » : en-tête, liste du jour, formulaire et dialogues. */
+/** Accès aux autres écrans depuis « Aujourd'hui ». */
+class Navigation(val onHistorique: () -> Unit, val onReglages: () -> Unit, val onAPropos: () -> Unit)
+
+/**
+ * Écran « Aujourd'hui » : en-tête, totaux et liste de la journée en cours ([jour]), formulaire
+ * de saisie et dialogues de [vm].
+ */
 @Composable
-fun EcranSaisie(vm: SaisieViewModel, modifier: Modifier = Modifier) {
+fun EcranAujourdhui(
+    vm: SaisieViewModel,
+    jour: JourneeViewModel,
+    navigation: Navigation,
+    modifier: Modifier = Modifier,
+) {
     val etat by vm.etat.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
@@ -87,22 +112,28 @@ fun EcranSaisie(vm: SaisieViewModel, modifier: Modifier = Modifier) {
     BackHandler(enabled = etat.formulaire != null) { vm.fermerFormulaire() }
 
     Scaffold(modifier = modifier, snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+        // consumeWindowInsets + imePadding : le clavier remonte le contenu sans doubler la marge
+        // de la barre système déjà appliquée par le Scaffold.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             EnTete()
             val formulaire = etat.formulaire
             if (formulaire == null) {
-                Principal(etat, vm)
+                Principal(vm, jour, navigation)
             } else {
                 FormulaireNouvellePrise(formulaire, etat.medicaments, vm)
             }
         }
     }
+
+    DialogueAnnulation(jour)
 
     etat.relecture?.let { relecture ->
         AlertDialog(
@@ -125,24 +156,6 @@ fun EcranSaisie(vm: SaisieViewModel, modifier: Modifier = Modifier) {
                     onClick = vm::modifier,
                     modifier = Modifier.heightIn(min = 48.dp).testTag(Tags.MODIFIER),
                 ) { Text(stringResource(R.string.modifier)) }
-            },
-        )
-    }
-
-    etat.priseAAnnuler?.let { ligne ->
-        AlertDialog(
-            onDismissRequest = vm::abandonnerAnnulation,
-            title = { Text(stringResource(R.string.confirmation_titre)) },
-            text = { Text(stringResource(R.string.confirmation_texte, ligne.texte)) },
-            confirmButton = {
-                Button(onClick = vm::confirmerAnnulation, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.confirmation_oui))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = vm::abandonnerAnnulation, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.confirmation_non))
-                }
             },
         )
     }
@@ -170,65 +183,40 @@ fun EnTete() {
 }
 
 @Composable
-private fun Principal(etat: SaisieUiState, vm: SaisieViewModel) {
-    Text(stringResource(R.string.ecran_titre), style = MaterialTheme.typography.titleLarge)
-    Button(
-        onClick = vm::ouvrirFormulaire,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(Tags.NOUVELLE_PRISE),
-    ) { Text(stringResource(R.string.nouvelle_prise)) }
-
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
-            selected = etat.journeeAffichee == JourneeAffichee.COURANTE,
-            onClick = { vm.choisirJourneeAffichee(JourneeAffichee.COURANTE) },
-            label = { Text(stringResource(R.string.journee_courante)) },
-            modifier = Modifier.heightIn(min = 48.dp),
-        )
-        FilterChip(
-            selected = etat.journeeAffichee == JourneeAffichee.PRECEDENTE,
-            onClick = { vm.choisirJourneeAffichee(JourneeAffichee.PRECEDENTE) },
-            label = { Text(stringResource(R.string.journee_precedente)) },
-            modifier = Modifier.heightIn(min = 48.dp),
-        )
+private fun Principal(vm: SaisieViewModel, jour: JourneeViewModel, navigation: Navigation) {
+    val etatJour by jour.etat.collectAsStateWithLifecycle()
+    // Au retour au premier plan, la journée en cours a pu changer (passage du pivot).
+    LifecycleResumeEffect(jour) {
+        jour.actualiser()
+        onPauseOrDispose { }
     }
 
-    Text(stringResource(R.string.liste_titre), style = MaterialTheme.typography.titleMedium)
-    if (etat.prises.isEmpty()) {
-        Text(stringResource(R.string.liste_vide))
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().testTag(Tags.LISTE),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(etat.prises, key = { it.id }) { ligne -> LignePriseVue(ligne, vm) }
-        }
-    }
-}
-
-@Composable
-private fun LignePriseVue(ligne: LignePrise, vm: SaisieViewModel) {
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(ligne.texte, style = MaterialTheme.typography.bodyLarge)
-            if (ligne.annulee) {
-                Text(
-                    stringResource(R.string.prise_annulee),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+        Text(stringResource(R.string.ecran_titre), style = MaterialTheme.typography.titleLarge)
+        Button(
+            onClick = vm::ouvrirFormulaire,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(Tags.NOUVELLE_PRISE),
+        ) { Text(stringResource(R.string.nouvelle_prise)) }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = navigation.onHistorique,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(Tags.HISTORIQUE),
+            ) { Text(stringResource(R.string.historique)) }
+            OutlinedButton(
+                onClick = navigation.onReglages,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(Tags.REGLAGES),
+            ) { Text(stringResource(R.string.reglages)) }
+            OutlinedButton(
+                onClick = navigation.onAPropos,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag(Tags.A_PROPOS),
+            ) { Text(stringResource(R.string.a_propos)) }
         }
-        if (!ligne.annulee) {
-            val description = stringResource(R.string.annuler_prise_description, ligne.texte)
-            TextButton(
-                onClick = { vm.demanderAnnulation(ligne.id) },
-                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = description },
-            ) { Text(stringResource(R.string.annuler_cette_prise)) }
-        }
+
+        TotauxEtListe(etatJour, jour, actions = false)
     }
 }
 
@@ -236,8 +224,12 @@ private fun LignePriseVue(ligne: LignePrise, vm: SaisieViewModel) {
 private fun FormulaireNouvellePrise(formulaire: Formulaire, medicaments: List<Medicament>, vm: SaisieViewModel) {
     var choixHeure by remember { mutableStateOf(false) }
 
+    // Champs dans une zone défilable ; « Relire » et « Retour » dans une barre fixe en dessous,
+    // toujours visible, même quand des messages d'erreur allongent le formulaire. La barre
+    // reste au-dessus du clavier (imePadding posé par l'écran parent).
+    Column(modifier = Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(stringResource(R.string.formulaire_titre), style = MaterialTheme.typography.titleLarge)
@@ -274,6 +266,8 @@ private fun FormulaireNouvellePrise(formulaire: Formulaire, medicaments: List<Me
                 label = { Text(stringResource(R.string.libelle_champ)) },
                 isError = formulaire.erreurLibelle != null,
                 singleLine = true,
+                // Majuscule initiale proposée par le clavier ; la casse saisie est conservée telle quelle.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier.weight(1f).testTag(Tags.CHAMP_LIBELLE),
             )
             OutlinedButton(
@@ -339,16 +333,21 @@ private fun FormulaireNouvellePrise(formulaire: Formulaire, medicaments: List<Me
             modifier = Modifier.heightIn(min = 48.dp),
         ) { Text(stringResource(R.string.heure_modifier, PhrasePrise.heure(formulaire.heure))) }
         if (formulaire.erreurHeureFuture) Erreur(stringResource(R.string.erreur_heure_futur))
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = vm::relire,
-                modifier = Modifier.heightIn(min = 48.dp).testTag(Tags.RELIRE),
-            ) { Text(stringResource(R.string.relire)) }
-            TextButton(onClick = vm::fermerFormulaire, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.retour))
-            }
-        }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(Tags.BARRE_ACTIONS),
+    ) {
+        Button(
+            onClick = vm::relire,
+            modifier = Modifier.heightIn(min = 48.dp).testTag(Tags.RELIRE),
+        ) { Text(stringResource(R.string.relire)) }
+        TextButton(
+            onClick = vm::fermerFormulaire,
+            modifier = Modifier.heightIn(min = 48.dp).testTag(Tags.RETOUR),
+        ) { Text(stringResource(R.string.retour)) }
+    }
     }
 
     if (choixHeure) {

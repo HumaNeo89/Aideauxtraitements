@@ -45,6 +45,28 @@ class FauxJournal : JournalPrises {
         return true
     }
 
+    override suspend fun reattribuer(id: Long, journee: LocalDate?): Boolean {
+        val courante = prises.value.firstOrNull { it.id == id.toString() } ?: return false
+        prises.value = prises.value.map { if (it === courante) it.copy(journeeForcee = journee) else it }
+        return true
+    }
+
+    /** Ajoute directement une prise (données de test), quel que soit son statut. */
+    suspend fun ajouterPrise(
+        libelle: String,
+        quantite: Quantite,
+        unite: Unite,
+        horodatage: Instant,
+        statut: StatutPrise = StatutPrise.CONFIRMEE,
+    ): Long {
+        val medicament = listeMedicaments.firstOrNull { it.libelle == libelle } ?: ajouterMedicament(libelle)
+        val id = enregistrerPrise(medicament.id, quantite, unite, horodatage)
+        if (statut == StatutPrise.ANNULEE) annulerPrise(id)
+        return id
+    }
+
+    fun prise(id: Long): Prise = prises.value.first { it.id == id.toString() }
+
     override fun observerPrisesDuJour(journee: LocalDate, calc: JourneeCalculator): Flow<List<Prise>> =
         prises.map { prisesDuJour(it, journee, calc) }
 
